@@ -6,6 +6,22 @@ This repository contains <strong>Pixel Prompt</strong> an app made with React Na
 
 To preview the application visit the hosted version on the Hugging Face Spaces platform [here](https://huggingface.co/spaces/Hatman/react-native-serve-ml) or download the Android version [here](https://play.google.com/store/apps/details?id=gemenielabs.pixel_prompt)
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt.png" alt="Image 1"></td>
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_1.png" alt="Image 2"></td>
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_2.png" alt="Image 3"></td>
+    </tr>
+    <tr>
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_3.png" alt="Image 4"></td>
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_4.png" alt="Image 5"></td>
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_5.png" alt="Image 6"></td>
+    
+  </tr>
+</table>
+
 ## Prerequisites
 
 Before running this application locally, ensure that you have the following dependencies installed on your machine:
