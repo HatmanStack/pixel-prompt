@@ -1,10 +1,10 @@
-# React Native App with Expo
+# Pixel Prompt
 
-This repository contains a React Native application built using Expo. This is an example app, intended to demonstrate the inference API from Hugging Face JS Libraries.  Expo builds the application for web or mobile. An explanation of some of the componenets and deployment architectures: [Cloud Bound](https://medium.com/@HatmanStack/cloud-bound-react-native-and-fastapi-ml-684a658f967a).
+This repository contains <strong>Pixel Prompt</strong> an app made with React Native built using Expo. It uses the Hugging Face Inference API along with SOTA diffusion models to create images. The app can act as a scaffold to deploy your own ML applications using JS or as a frontend for more intensive ML [applications](https://github.com/hatmanstack/react-native-serve-ml). An explanation of some of the componenets and deployment architectures: [Cloud Bound](https://medium.com/@HatmanStack/cloud-bound-react-native-and-fastapi-ml-684a658f967a).
 
 ## Preview
 
-To preview the application visit the hosted version on the Hugging Face Spaces platform [here](https://huggingface.co/spaces/Hatman/react-native-serve-ml) or download the Android version [here](https://play.google.com/store/apps/details?id=gemenielabs.serveml)
+To preview the application visit the hosted version on the Hugging Face Spaces platform [here](https://huggingface.co/spaces/Hatman/react-native-serve-ml) or download the Android version [here](https://play.google.com/store/apps/details?id=gemenielabs.pixel_prompt)
 
 ## Prerequisites
 
