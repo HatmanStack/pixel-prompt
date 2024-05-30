@@ -1,10 +1,10 @@
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect} from 'react';
-import {ActivityIndicator, StyleSheet, View, ScrollView, Text, Pressable, useWindowDimensions, Image} from 'react-native';
-import {useFonts } from 'expo-font'; 
+import {ActivityIndicator, StyleSheet, View, ScrollView, Text, Pressable, Dimensions, Image} from 'react-native';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
+import { useFonts } from 'expo-font';
 
 import SliderComponent from './components/Slider';
 import PromptInputComponent from './components/PromptInput';
@@ -28,7 +28,7 @@ export default function App() {
   const [activity, setActivity] = useState(false);
   const [modelError, setModelError] = useState(false);
   const [returnedPrompt, setReturnedPrompt] = useState('Avocado Armchair');
-  const {width} = useWindowDimensions();
+  const windowWidth = Dimensions.get('window').width;
 
   const passPromptWrapper = (x) => {setPrompt(x)};
   const passStepsWrapper = (x) => {setSteps(x)};
@@ -37,6 +37,12 @@ export default function App() {
       setModelError(false);
       setModelID(x)};
 
+  let imageSource;
+  if (skip) {
+    imageSource = { uri: inferredImage };
+  } else {
+    imageSource = assetImage;
+  }
 
   useEffect(() => {
     const checkForUpdates = async () => {
@@ -110,7 +116,7 @@ export default function App() {
       <View style={styles.titlecontainer}>
         <BreathingComponent /> 
         <ScrollView scrollY={true} style={styles.ScrollView} showsVerticalScrollIndicator={false}> 
-          {width > 1000 ? (<View style={styles.rowContainer}>
+          {windowWidth > 1000 ? (<View style={styles.rowContainer}>
               {/* Left column */}
               <View style={styles.columnContainer}>
                   <View>
@@ -136,7 +142,7 @@ export default function App() {
                 {/* Right column */}
                 <View style={styles.columnContainer}>
                   <View style={styles.columnContainer}>
-                  {inferredImage && <Image source={{ uri: inferredImage }} style={styles.imageStyle} />}
+                  {inferredImage && <Image source={imageSource} style={styles.imageStyle} />}
                     <Text style={styles.promptText}>{returnedPrompt}</Text>
                   </View>
                 </View>
@@ -154,7 +160,7 @@ export default function App() {
                   </Pressable>}
                   {modelError ? <Text style={styles.promptText}>Model Error!</Text>:<></>}
                 <SliderComponent passSteps={passStepsWrapper} passGuidance={passGuidanceWrapper} />   
-                {inferredImage && <Image source={{ uri: inferredImage }} style={styles.imageStyle} />}
+                {inferredImage && <Image source={imageSource} style={styles.imageStyle} />}
                 <Text style={styles.promptText}>{returnedPrompt}</Text>
             </View>)}
         </ScrollView><StatusBar style="auto" />
@@ -163,24 +169,15 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  canvascontainer: {
-    backgroundColor: '#25292e',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,  
-    padding: 50
-  },
+  
   titlecontainer: {
     backgroundColor: '#25292e',
-    position: 'absolute',
-    
+    position: 'absolute', 
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,  
-    padding: 50
+    padding: 20
   },
   rowContainer: {
     flex: 1,
@@ -195,6 +192,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     flexDirection: 'column',
+    
   },
   button:{
     fontFamily: 'Sigmar',
@@ -208,9 +206,8 @@ const styles = StyleSheet.create({
   promptText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: 'italic',
+    fontWeight: 'bold',
     textAlign: 'center',
-    wordWrap: 'break-word',
     fontFamily: 'Sigmar',
     letterSpacing: 2,
     lineHeight: 30

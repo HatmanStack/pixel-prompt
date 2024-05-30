@@ -5,6 +5,7 @@ import Slider from "@react-native-community/slider";
 export default function SliderComponent({ passSteps, passGuidance }) {
   const [samplingValue, setSamplingValue] = React.useState(45);
   const [guidanceValue, setGuidanceValue] = React.useState(10);
+  
  
   // Handle sampling steps change
   const handleStepChange = (x) => {
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
   },
   slider: {
-    width: 400,
+    width: 350,
     height: 40,
   },
   sliderValue: {
@@ -65,7 +66,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Sigmar',
     letterSpacing: 3,
-    paddingBottom: 30
+    paddingBottom: 30,
+    width: 350,
   },
   captionText: {
     color: '#FFFFFF',
@@ -73,5 +75,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Sigmar',
     letterSpacing: 3,
+    width: 350,
   },
 });

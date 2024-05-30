@@ -16,6 +16,15 @@ export default {
   splash: {
     backgroundColor: '#FFFFFF',
   },
+  plugins: [
+    [
+      "expo-font",
+      {
+        "fonts": ["./assets/Sigmar/Sigmar-Regular.ttf"]
+      }
+    ]
+  ],
+
  
   web: {
     favicon: './assets/icon.png'
@@ -34,7 +43,7 @@ export default {
   },
   android: {
     package: 'gemenielabs.pixel_prompt',
-    versionCode: 1
+    versionCode: 2
   },
   ios: {}
 }

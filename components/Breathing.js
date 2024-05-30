@@ -107,7 +107,6 @@ const styles = StyleSheet.create({
     },
     heading: {
       fontWeight: 'bold',
-      fontWeight: 20,
       paddingTop: 25,
       color: '#6750A4',
       fontFamily: 'Sigmar',

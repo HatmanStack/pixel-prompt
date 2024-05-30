@@ -42,6 +42,6 @@ const styles = StyleSheet.create({
     paddingRight: 10,
     fontSize: 20,
     fontFamily: 'Sigmar',
-    
+    color: '#000000',
   },
 });
