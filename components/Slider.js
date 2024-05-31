@@ -51,6 +51,10 @@ export default function SliderComponent({ passSteps, passGuidance }) {
   );
 }
 
+const colors = {
+  color: '#FFFFFF',
+};
+
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
@@ -60,21 +64,20 @@ const styles = StyleSheet.create({
     width: 350,
     height: 40,
   },
-  sliderValue: {
-    fontSize: 18,
-    color: '#FFFFFF',
+  captionText: {
+    color: colors.color,
+    fontSize: 20,
     textAlign: 'center',
-    fontFamily: 'Sigmar',
     letterSpacing: 3,
+    width: 350,
+  },
+  sliderValue: {
+    color: colors.color,
+    fontSize: 18,
+    letterSpacing: 3,
+    textAlign: 'center',
     paddingBottom: 30,
     width: 350,
   },
-  captionText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    textAlign: 'center',
-    fontFamily: 'Sigmar',
-    letterSpacing: 3,
-    width: 350,
-  },
+  
 });

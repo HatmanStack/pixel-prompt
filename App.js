@@ -1,17 +1,17 @@
+import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, View, ScrollView, Text, Pressable, Dimensions, Image } from 'react-native';
 import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect} from 'react';
-import {ActivityIndicator, StyleSheet, View, ScrollView, Text, Pressable, Dimensions, Image} from 'react-native';
 import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
-import { useFonts } from 'expo-font';
+import {useFonts } from 'expo-font'; 
+import { HfInference } from "@huggingface/inference";
 
 import SliderComponent from './components/Slider';
 import PromptInputComponent from './components/PromptInput';
 import BreathingComponent from './components/Breathing';
 import DropDownComponent from './components/DropDown';
 
-import { HfInference } from "@huggingface/inference";
 const HF_TOKEN = Constants.expoConfig.extra.HF_TOKEN_VAR;
 const inference = new HfInference(HF_TOKEN);
 const assetImage = require('./assets/avocado.jpg');
@@ -36,14 +36,7 @@ export default function App() {
   const passModelIDWrapper = (x) => {
       setModelError(false);
       setModelID(x)};
-
-  let imageSource;
-  if (skip) {
-    imageSource = { uri: inferredImage };
-  } else {
-    imageSource = assetImage;
-  }
-
+  
   useEffect(() => {
     const checkForUpdates = async () => {
       try {
@@ -95,13 +88,17 @@ export default function App() {
           const reader = new FileReader();
           reader.onload = () => {
             setActivity(false);
-            setInferredImage(reader.result);
+            if (typeof reader.result === 'string') {
+              setInferredImage(reader.result);
+            } else {
+              console.error('Expected reader.result to be a string, got', typeof reader.result);
+            }
           };
           reader.onerror = (error) => {
             console.log('Error reading Blob:', error);
           };
           reader.readAsDataURL(response);
-        };
+        }
       }).catch(function (error) {
         setActivity(false);
         setModelError(true);
@@ -142,7 +139,7 @@ export default function App() {
                 {/* Right column */}
                 <View style={styles.columnContainer}>
                   <View style={styles.columnContainer}>
-                  {inferredImage && <Image source={imageSource} style={styles.imageStyle} />}
+                  {inferredImage && <Image source={inferredImage} style={styles.imageStyle} />}
                     <Text style={styles.promptText}>{returnedPrompt}</Text>
                   </View>
                 </View>
@@ -160,7 +157,7 @@ export default function App() {
                   </Pressable>}
                   {modelError ? <Text style={styles.promptText}>Model Error!</Text>:<></>}
                 <SliderComponent passSteps={passStepsWrapper} passGuidance={passGuidanceWrapper} />   
-                {inferredImage && <Image source={imageSource} style={styles.imageStyle} />}
+                {inferredImage && <Image source={inferredImage} style={styles.imageStyle} />}
                 <Text style={styles.promptText}>{returnedPrompt}</Text>
             </View>)}
         </ScrollView><StatusBar style="auto" />
@@ -168,10 +165,16 @@ export default function App() {
   );
 }
 
+const colors = {
+  backgroundColor: '#25292e',
+  color: '#FFFFFF',
+  button: '#958DA5',
+};
+
 const styles = StyleSheet.create({
-  
   titlecontainer: {
-    backgroundColor: '#25292e',
+    backgroundColor: colors.backgroundColor,
+    fontFamily: 'Sigmar',
     position: 'absolute', 
     top: 0,
     left: 0,
@@ -180,10 +183,10 @@ const styles = StyleSheet.create({
     padding: 20
   },
   rowContainer: {
-    flex: 1,
-    backgroundColor: '#25292e',
-    flexDirection: 'row',
+    backgroundColor: colors.backgroundColor,
     alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
     marginTop: 10,
     overflow: 'auto',
     padding: 20
@@ -191,29 +194,26 @@ const styles = StyleSheet.create({
   columnContainer: {
     flex: 1,
     alignItems: 'center',
-    flexDirection: 'column',
-    
+    flexDirection: 'column', 
   },
   button:{
-    fontFamily: 'Sigmar',
-    paddingHorizontal: 32,
     borderRadius: 4,
+    paddingHorizontal: 32,
     elevation: 3
   },
   activityIndicator:{
     marginLeft: 50
   },
   promptText: {
-    color: '#FFFFFF',
+    color: colors.color,
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
-    fontFamily: 'Sigmar',
     letterSpacing: 2,
     lineHeight: 30
   },
   ScrollView: {
-    backgroundColor: '#25292e',
+    backgroundColor: colors.backgroundColor,
     marginTop: 50,
     padding: 5
   },

@@ -12,20 +12,6 @@ export default {
   assetBundlePatterns: [
     '**/*'
   ],
-  
-  splash: {
-    backgroundColor: '#FFFFFF',
-  },
-  plugins: [
-    [
-      "expo-font",
-      {
-        "fonts": ["./assets/Sigmar/Sigmar-Regular.ttf"]
-      }
-    ]
-  ],
-
- 
   web: {
     favicon: './assets/icon.png'
   },
@@ -43,7 +29,7 @@ export default {
   },
   android: {
     package: 'gemenielabs.pixel_prompt',
-    versionCode: 2
+    versionCode: 4
   },
   ios: {}
 }

@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 
@@ -28,28 +27,30 @@ export default function DropDownComponent({passModelID}){
       
     />
   );
-};
+}
 
+const colors = {
+  borderBottomColor: '#9DA58D',
+  color: '#FFFFFF',
+};
 const styles = StyleSheet.create({
   dropdown: {
     margin: 16,
     height: 50,
     width: 300,
-    borderBottomColor: '#9DA58D',
+    borderBottomColor: colors.borderBottomColor,
     borderBottomWidth: 3,
   },
   placeholderStyle: {
+    color: colors.color,
     fontSize: 25,
-    color: '#FFFFFF',
     textAlign: 'center',
-    fontFamily: 'Sigmar',
     letterSpacing: 3,
   },
   selectedTextStyle: {
+    color: colors.color,
     fontSize: 20,
     letterSpacing: 3,
-    color: '#FFFFFF',
     textAlign: 'center',
-    fontFamily: 'Sigmar',
   },
 });

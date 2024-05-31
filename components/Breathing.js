@@ -96,23 +96,27 @@ export default function Breathing() {
       </Text>
     </View>
   );
+}
+
+const colors = {
+  color: '#6750A4',
 };
 
 const styles = StyleSheet.create({
     containerbreathing: {
       flex: 1,
-      flexDirection: 'row',
       alignItems: 'center',
+      flexDirection: 'row',
       justifyContent: 'center',
-    },
-    heading: {
-      fontWeight: 'bold',
-      paddingTop: 25,
-      color: '#6750A4',
-      fontFamily: 'Sigmar',
-      position:'absolute', 
     },
     char: {
       marginHorizontal: 15,
     },
+    heading: {
+      fontWeight: 'bold',
+      color: colors.color,
+      paddingTop: 25,
+      position:'absolute', 
+    },
+    
   });

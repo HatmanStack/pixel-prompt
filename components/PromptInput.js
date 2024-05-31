@@ -25,14 +25,20 @@ export default function PromptInputComponent({ passPrompt }) {
     />
   );
 
+}
+
+const colors = {
+  backgroundColor: '#FFFFFF',
+  borderColor: '#B58392',
+  color: '#000000',
 };
 
 const styles = StyleSheet.create({
   input: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#B58392',
-    borderWidth: 4,
+    backgroundColor: colors.backgroundColor,
+    borderColor: colors.borderColor,
     borderBottomLeftRadius: 4,
+    borderWidth: 4,
     borderBottomRightRadius: 4,
     borderStartWidth: 10,
     borderEndWidth: 10,
@@ -41,7 +47,6 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     paddingRight: 10,
     fontSize: 20,
-    fontFamily: 'Sigmar',
-    color: '#000000',
+    color: colors.color,
   },
 });
