@@ -3,6 +3,7 @@ node_modules/
 yarn.lock
 .env
 app.json
+package-lock.json
 
 # macOS
 .DS_Store
