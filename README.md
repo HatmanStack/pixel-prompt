@@ -1,57 +1,80 @@
 # Pixel Prompt
 
-This repository contains <strong>Pixel Prompt</strong> an app made with React Native built using Expo. It uses the Hugging Face Inference API along with SOTA diffusion models to create images. The app can act as a scaffold to deploy your own ML applications using JS or as a frontend for more intensive ML [applications](https://github.com/hatmanstack/react-native-serve-ml). An explanation of some of the componenets and deployment architectures: [Cloud Bound](https://medium.com/@HatmanStack/cloud-bound-react-native-and-fastapi-ml-684a658f967a).
+Pixel Prompt is a versatile application built using React Native, which can be deployed as a standalone application or integrated with a symmetrical backend powered by FastAPI and Docker. Although currently configured with diffusion models, Pixel Prompt is designed to handle a wide range of ML workloads, offering flexibility and scalability. It was initially designed to serve as a scaffold for cross-platform ML deployment.
 
-## Preview
+## Architecture and Deployment Options
 
-To preview the application visit the hosted version on the Hugging Face Spaces platform [here](https://huggingface.co/spaces/Hatman/react-native-serve-ml) or download the Android version [here](https://play.google.com/store/apps/details?id=gemenielabs.pixel_prompt)
+To ensure a comprehensive understanding of the application's architecture, here are the key components and deployment strategies:
 
-## Screenshots
+1. **Frontend**: The frontend component is developed using React Native, providing a user-friendly interface for  interaction with the underlying ML models and backend services. 
+
+2. **Backend**: The backend component is built using FastAPI and Docker, offering a robust and scalable foundation for hosting and managing ML models and associated APIs. FastAPI provides a fast and efficient framework for building APIs, while Docker ensures consistent and reproducible deployments across different environments.
+
+3. **Containerization**: Both the frontend and backend components can be packaged into lightweight and portable Docker containers. Containerization allows for easy deployment and scaling of the application, ensuring consistent behavior across various environments. Docker containers encapsulate all the necessary dependencies and configurations, making it simple to deploy Pixel Prompt on different platforms and infrastructures.
+
+4. **JavaScript (JS)**: By leveraging React Native, Pixel Prompt can be built as a self-contained JavaScript application. This allows for a unified codebase that can be compiled and deployed on multiple platforms, including mobile devices and web browsers. The JavaScript version of Pixel Prompt provides a seamless and platform-agnostic user experience.
+
+For a more in-depth discussion about the architectures and deployment strategies, refer to the article [Cloud Bound: React Native and FastAPI for ML](https://medium.com/@HatmanStack/cloud-bound-react-native-and-fastapi-ml-684a658f967a).
+
+## Preview :zap:
+
+To preview the application visit the hosted version on the Hugging Face Spaces platform [here](https://huggingface.co/spaces/Hatman/pixel-prompt).
+
+## Screenshots :camera:
 
 <table>
   <tr>
-    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt.png" alt="Image 1"></td>
-    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_1.png" alt="Image 2"></td>
-    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_2.png" alt="Image 3"></td>
+    <p align="center">
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_main.png" alt="Image 1"></td></p>
     </tr>
     <tr>
-    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_3.png" alt="Image 4"></td>
-    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_4.png" alt="Image 5"></td>
-    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_prompt_5.png" alt="Image 6"></td>
-    
+    <p align="center">
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_main_1.png" alt="Image 3"></td></p>
   </tr>
+  <tr>
+    <p align="center">
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_main_2.png" alt="Image 1"></td></p>
+    </tr>
+    <tr>
+    <p align="center">
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_main_3.png" alt="Image 3"></td></p>
+  </tr>
+  <tr>
+    <p align="center">
+    <td><img src="https://github.com/HatmanStack/pixel-prompt/blob/main/pics/pixel_main_4.png" alt="Image 1"></td></p>
+    </tr>
 </table>
 
-## Prerequisites
+## Prerequisites :hammer:
 
-Before running this application locally, ensure that you have the following dependencies installed on your machine:
-
-### Frontend
+Before running this application locally, ensure that you have the following dependencies installed on your machine.  Each version has seperate build instructions.:
 
 - Node
-- npm (Node Package Manager)
+- npm (Node Package Manager) 
+- python
 
-## Installation
+**For all Modules**
+```shell
+git clone --recurse-submodules https://github.com/hatmanstack/pixel-prompt.git
+```
 
-To install and run the application:
+## Models :sparkles:
 
-### Frontend
-   
-   ```shell
-   git clone https://github.com/hatmanstack/react-native-serve-ml-inference-api.git
-   cd react-native-serve-ml
-   npm install -g yarn
-   yarn
-   npm start
-   ```
+All the models are opensource and available on HuggingFace.
 
-The app will be running locally at http://localhost:19006. For different environments you can switch the port at startup, use 'npm start -- --port 8080' to start Metro(Expo's Compiler) on port 8080.
+### Diffusion
 
-Include a .env file for your Hugging Face API Key.
+- **stabilityai/stable-diffusion-xl-base-1.0**
+- **stabilityai/stable-diffusion-xl-refiner-1.0**
+- **prompthero/openjourney**
+- **dreamlike-art/dreamlike-photoreal-2.0**
+- **nitrosocke/Arcane-Diffusion**
+- **dallinmackay/Van-Gogh-diffusion**
+- **nousr/robo-diffusion**
 
-   ```shell
-   HF_TOKEN_VARIABLE=<hf-api-token>
-   ```
+### Prompts
+
+- **Gustavosta/MagicPrompt-Stable-Diffusion**
 
 ## License
 
@@ -59,5 +82,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Acknowledgments
 
-- This application is built with Expo, a powerful framework for building cross-platform mobile applications. Learn more about Expo: [https://expo.io](https://expo.io)
+This application is built with Expo, a powerful framework for building cross-platform mobile applications. Learn more about Expo: [https://expo.io](https://expo.io)
+
+<p align="center">This application is using the HuggingFace Inference API and the Diffusers Library, provided by <a href="https://huggingface.co">HuggingFace</a> </br><img src="https://github.com/HatmanStack/pixel-prompt-backend/blob/main/logo.png" alt="Image 4
 

@@ -1,0 +1,12 @@
+[submodule "pixel-prompt-js"]
+	path = pixel-prompt-js
+	url = https://github.com/HatmanStack/pixel-prompt-js.git
+[submodule "pixel-prompt-frontend"]
+	path = pixel-prompt-frontend
+	url = https://github.com/HatmanStack/pixel-prompt-frontend.git
+[submodule "pixel-prompt-container"]
+	path = pixel-prompt-container
+	url = https://github.com/HatmanStack/pixel-prompt-container.git
+[submodule "pixel-prompt-backend"]
+	path = pixel-prompt-backend
+	url = https://github.com/HatmanStack/pixel-prompt-backend.git
