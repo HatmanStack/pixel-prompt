@@ -58,6 +58,11 @@ Before running this application locally, ensure that you have the following depe
 git clone --recurse-submodules https://github.com/hatmanstack/pixel-prompt.git
 ```
 
+**Updating all Modules**
+```shell
+git submodule update --remote --merge
+```
+
 ## Models :sparkles:
 
 All the models are opensource and available on HuggingFace.
@@ -74,7 +79,7 @@ All the models are opensource and available on HuggingFace.
 
 ### Prompts
 
-- **Gustavosta/MagicPrompt-Stable-Diffusion**
+- **mistralai/Mistral-7B-Instruct-v0.3**
 
 ## License
 
