@@ -98,5 +98,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 This application is built with Expo, a powerful framework for building cross-platform mobile applications. Learn more about Expo: [https://expo.io](https://expo.io)
 
-<p align="center">This application is using the HuggingFace Inference API and the Diffusers Library, provided by <a href="https://huggingface.co">HuggingFace</a> </br><img src="https://github.com/HatmanStack/pixel-prompt-backend/blob/main/logo.png" alt="Image 4
+<p align="center">This application is using the HuggingFace Inference API and the Diffusers Library, provided by <a href="https://huggingface.co">HuggingFace</a> </br><img src="https://github.com/HatmanStack/pixel-prompt-backend/blob/main/logo.png" alt="Image 4"></p>
+
+
 
