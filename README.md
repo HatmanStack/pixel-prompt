@@ -69,13 +69,22 @@ All the models are opensource and available on HuggingFace.
 
 ### Diffusion
 
+- **SPO-Diffusion-Models/SPO-SDXL_4k-p_10ep**
 - **stabilityai/stable-diffusion-xl-base-1.0**
-- **stabilityai/stable-diffusion-xl-refiner-1.0**
-- **prompthero/openjourney**
-- **dreamlike-art/dreamlike-photoreal-2.0**
-- **nitrosocke/Arcane-Diffusion**
+- **Fictiverse/Voxel_XL_Lora**
+- **Fictiverse/Stable_Diffusion_PaperCut_Model**
 - **dallinmackay/Van-Gogh-diffusion**
 - **nousr/robo-diffusion**
+- **Eugeoter/artiwaifu-diffusion-1.0**
+- **nitrosocke/Arcane-Diffusion**
+- **Fictiverse/Stable_Diffusion_BalloonArt_Model**
+- **prompthero/openjourney**
+- **juliajoanna/sdxl-flintstones_finetuning_1**
+- **segmind/Segmind-Vega**
+- **Pclanglais/Mickey-1928**
+- **firella/202404032300-oldvis-choropleth-lora-sdxl**
+- **0x7o/RussianVibe-XL-v2.0**
+- **dreamlike-art/dreamlike-photoreal-2.0**
 
 ### Prompts
 
