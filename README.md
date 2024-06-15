@@ -89,6 +89,7 @@ All the models are opensource and available on HuggingFace.
 
 - **mistralai/Mistral-7B-Instruct-v0.3**
 - **roborovski/superprompt-v1**
+- **google/gemma-1.1-7b-it**
 
 ## Functionality
 
