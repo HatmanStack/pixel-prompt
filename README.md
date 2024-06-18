@@ -69,8 +69,16 @@ All the models are opensource and available on HuggingFace.
 
 ### Diffusion
 
-- **SPO-Diffusion-Models/SPO-SDXL_4k-p_10ep**
+#### Image to Image
+
+- **timbrooks/instruct-pix2pix**
+- **stabilityai/stable-diffusion-xl-refiner-1.0**
+       
+#### Text to Image
+
+- **stabilityai/stable-diffusion-3-medium**
 - **stabilityai/stable-diffusion-xl-base-1.0**
+- **SPO-Diffusion-Models/SPO-SDXL_4k-p_10ep**
 - **Fictiverse/Fictiverse/Stable_Diffusion_VoxelArt_Model**
 - **Fictiverse/Stable_Diffusion_PaperCut_Model**
 - **dallinmackay/Van-Gogh-diffusion**
@@ -83,7 +91,7 @@ All the models are opensource and available on HuggingFace.
 - **segmind/Segmind-Vega**
 - **digiplay/AbsoluteReality_v1.8.1**
 - **dreamlike-art/dreamlike-photoreal-2.0**
-- **digiplay/Acorn_Photo_v1***
+- **digiplay/Acorn_Photo_v1**
 
 ### Prompts
 
