@@ -10,3 +10,6 @@
 [submodule "pixel-prompt-backend"]
 	path = pixel-prompt-backend
 	url = https://github.com/HatmanStack/pixel-prompt-backend.git
+[submodule "pixel-prompt-eden-art"]
+	path = pixel-prompt-eden-art
+	url = https://github.com/HatmanStack/pixel-prompt-eden-art.git
