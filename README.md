@@ -55,7 +55,7 @@ Before running this application locally, ensure that you have the following depe
 
 **For all Modules**
 ```shell
-git clone --recurse-submodules https://github.com/hatmanstack/pixel-prompt.git
+git submodule update --init --recursive
 ```
 
 **Updating all Modules**
