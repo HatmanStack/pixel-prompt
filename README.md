@@ -1,15 +1,6 @@
 # Pixel Prompt
 
-Pixel Prompt is a versatile application built using React Native, which can be deployed as a standalone application or integrated with a symmetrical backend powered by FastAPI and Docker. Although currently configured with diffusion models, Pixel Prompt is designed to handle a wide range of ML workloads, offering flexibility and scalability. It was initially designed to serve as a scaffold for cross-platform ML deployment.
-
-<p alignItems="center">
-<iframe
-	src="https://hatman-pixel-prompt.hf.space"
-	frameborder="0"
-	width="850"
-	height="450"
-></iframe>
-</p>
+Pixel Prompt is a versatile application built using React Native, which can be deployed as a standalone application or integrated with a symmetrical backend powered by FastAPI and Docker. Although currently configured with diffusion models, Pixel Prompt is designed to handle a wide range of ML workloads, offering flexibility and scalability.  [Pixel Prompt](https://hatman-pixel-prompt.hf.space)
 
 ## Architecture and Deployment Options
 
