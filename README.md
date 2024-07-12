@@ -18,7 +18,7 @@ For a more in-depth discussion about the architectures and deployment strategies
 
 ## Preview :zap:
 
-To preview the application visit the hosted version on the Hugging Face Spaces platform [here](https://huggingface.co/spaces/Hatman/pixel-prompt).
+To preview the application visit the hosted version on the Hugging Face Spaces platform [here](https://hatman-pixel-prompt.hf.space).
 
 ## Screenshots :camera:
 
