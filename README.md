@@ -1,6 +1,32 @@
-# Pixel Prompt
+<div align="center" style="display: block;margin-left: auto;margin-right: auto;width: 50%;">
+<h1>Pixel Prompt</h1>
 
-Pixel Prompt is a versatile application built using React Native, which can be deployed as a standalone application or integrated with a symmetrical backend powered by FastAPI and Docker. Although currently configured with diffusion models, Pixel Prompt is designed to handle a wide range of ML workloads, offering flexibility and scalability.  [Pixel Prompt](https://production.d2iujulgl0aoba.amplifyapp.com/)
+<div style="display: flex; justify-content: center; align-items: center;">
+  <h4 style="margin: 0; display: flex;">
+    <a href="https://www.apache.org/licenses/LICENSE-2.0.html">
+      <img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="Apache 2.0 liscense" />
+    </a>
+    <a href="https://expo.dev/">
+    <img src="https://img.shields.io/badge/Expo-51+-green" alt="Expo Version" />
+    </a>
+    <a href="https://reactnative.dev/">
+      <img src="https://img.shields.io/badge/React%20Native-58C4DC" alt="React Native Version" />
+    </a>
+    <a href="https://www.docker.com/">
+      <img src="https://img.shields.io/badge/Docker-1D63ED" alt="Docker" />
+    </a>
+    <a href="https://www.python.org/downloads/">
+    <img src="https://img.shields.io/badge/Python%203.12+-FAD641" alt="Python Version">
+    </a>
+    <a href="https://aws.amazon.com/lambda/">
+    <img src="https://img.shields.io/badge/AWS%20Lambda-red" als="AWS Lambda">
+    </a>
+  </h4>
+</div>
+
+  <p><b>Text-to-Image Variety Pack<br> <a href="https://production.d2iujulgl0aoba.amplifyapp.com/"> Pixel Prompt » </a> </b> </p>
+ 
+</div>
 
 ## Architecture and Deployment Options
 
@@ -15,10 +41,6 @@ To ensure a comprehensive understanding of the application's architecture, here 
 4. **JavaScript (JS)**: By leveraging React Native, Pixel Prompt can be built as a self-contained JavaScript application. This allows for a unified codebase that can be compiled and deployed on multiple platforms, including mobile devices and web browsers. The JavaScript version of Pixel Prompt provides a seamless and platform-agnostic user experience.
 
 For a more in-depth discussion about the architectures and deployment strategies, refer to the article [Cloud Bound: React Native and FastAPI for ML](https://medium.com/@HatmanStack/cloud-bound-react-native-and-fastapi-ml-684a658f967a).
-
-## Preview :zap:
-
-To preview the application visit the hosted version on AWS [here](https://production.d2iujulgl0aoba.amplifyapp.com/).
 
 ## Screenshots :camera:
 
