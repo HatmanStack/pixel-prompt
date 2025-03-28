@@ -87,22 +87,20 @@ git submodule update --remote --merge
 
 ## Models :sparkles:
 
-All the models are opensource and available on HuggingFace.
-
+All the models are SOTA and some are available on HuggingFace.
+       
 ### Diffusion
 
-- **Random**
-- **stabilityai/stable-diffusion-3-medium**
-- **stabilityai/stable-diffusion-xl-base-1.0**
-- **nerijs/pixel-art-xl**
-- **Fictiverse/Voxel_XL_Lora**
-- **dallinmackay/Van-Gogh-diffusion**
-- **gsdf/Counterfeit-V2.5**
+- **Stable Diffusion**
+- **OpenAI Dalle3**
+- **AWS Nova Canvas**
+- **Black Forest Labs**
+- **Gemini 2.0**
+- **Imagen 3.0**
 
 ### Prompts
 
-- **Gustavosta/MagicPrompt-Stable-Diffusion**
-- **meta-llama/Meta-Llama-3-70B-Instruct**
+- **llama-3.3-70b-versatile**
 
 ## Functionality
 
