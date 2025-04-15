@@ -100,7 +100,7 @@ All the models are SOTA and some are available on HuggingFace.
 
 ### Prompts
 
-- **llama-3.3-70b-versatile**
+- **meta-llama/llama-4-maverick-17b-128e-instruct**
 
 ## Functionality
 
