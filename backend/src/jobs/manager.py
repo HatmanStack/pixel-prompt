@@ -117,6 +117,8 @@ class JobManager:
                 result['completedAt'] = datetime.now(timezone.utc).isoformat()
                 result['duration'] = duration
                 break
+        else:
+            raise ValueError(f"Model {model_name} not found in job {job_id} results")
 
         # Update completed count
         status['completedModels'] = sum(
@@ -152,6 +154,8 @@ class JobManager:
                 result['error'] = error
                 result['completedAt'] = datetime.now(timezone.utc).isoformat()
                 break
+        else:
+            raise ValueError(f"Model {model_name} not found in job {job_id} results")
 
         # Update overall status
         status['status'] = self._compute_overall_status(status)
@@ -180,6 +184,8 @@ class JobManager:
                 result['status'] = 'in_progress'
                 result['startedAt'] = datetime.now(timezone.utc).isoformat()
                 break
+        else:
+            raise ValueError(f"Model {model_name} not found in job {job_id} results")
 
         # Update overall status if this is the first model to start
         if status['status'] == 'pending':
