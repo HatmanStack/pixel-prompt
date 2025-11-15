@@ -10,6 +10,7 @@ import json
 import os
 import requests
 import tempfile
+import time
 from typing import Dict, Any, Callable
 from openai import OpenAI
 import boto3
@@ -434,8 +435,6 @@ def handle_bfl(model_config: Dict, prompt: str, params: Dict) -> Dict:
     Returns:
         Standardized response dict
     """
-    import time
-
     try:
         model_name_lower = model_config['name'].lower()
 
