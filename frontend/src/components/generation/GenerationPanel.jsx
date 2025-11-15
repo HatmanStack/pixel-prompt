@@ -8,6 +8,7 @@ import { useApp } from '../../context/AppContext';
 import useJobPolling from '../../hooks/useJobPolling';
 import { generateImages } from '../../api/client';
 import PromptInput from './PromptInput';
+import PromptEnhancer from './PromptEnhancer';
 import ParameterSliders from './ParameterSliders';
 import GenerateButton from './GenerateButton';
 import ImageGrid from './ImageGrid';
@@ -153,6 +154,12 @@ function GenerationPanel() {
           value={prompt}
           onChange={setPrompt}
           onClear={() => setPrompt('')}
+          disabled={isGenerating}
+        />
+
+        <PromptEnhancer
+          currentPrompt={prompt}
+          onUsePrompt={setPrompt}
           disabled={isGenerating}
         />
 
