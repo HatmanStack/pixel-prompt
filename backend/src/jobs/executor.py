@@ -34,7 +34,7 @@ class JobExecutor:
         Execute image generation job across all models in parallel.
 
         This method spawns threads for each model and processes them concurrently.
-        It does not wait for completion - updates happen asynchronously.
+        It blocks until all models complete or fail.
 
         Args:
             job_id: Job ID
@@ -178,28 +178,24 @@ class JobExecutor:
         handler,
         model: Dict,
         prompt: str,
-        params: Dict,
-        timeout: int = 120
+        params: Dict
     ) -> Dict:
         """
-        Execute handler with timeout.
+        Execute handler (wrapper for future timeout implementation).
 
-        Note: This is a simple implementation. For production, consider
-        using signal.alarm() or threading.Timer for true timeout enforcement.
+        Note: Individual handlers implement their own timeouts for API calls.
+        A full timeout wrapper would require signal handling or subprocess
+        execution, which adds complexity.
 
         Args:
             handler: Handler function to call
             model: Model configuration
             prompt: Text prompt
             params: Generation parameters
-            timeout: Timeout in seconds
 
         Returns:
             Handler result dict
         """
         # For now, just call the handler directly
         # The individual handlers have their own timeouts for API calls
-        # A full timeout implementation would require signal handling
-        # or subprocess execution, which adds complexity
-
         return handler(model, prompt, params)
