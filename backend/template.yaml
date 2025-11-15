@@ -472,6 +472,47 @@ Resources:
               Action:
                 - bedrock-runtime:InvokeModel
               Resource: '*'
+      Events:
+        GenerateApi:
+          Type: HttpApi
+          Properties:
+            Path: /generate
+            Method: POST
+            ApiId: !Ref HttpApi
+        StatusApi:
+          Type: HttpApi
+          Properties:
+            Path: /status/{jobId}
+            Method: GET
+            ApiId: !Ref HttpApi
+        EnhanceApi:
+          Type: HttpApi
+          Properties:
+            Path: /enhance
+            Method: POST
+            ApiId: !Ref HttpApi
+
+  # HTTP API Gateway
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: Prod
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-Requested-With
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        MaxAge: 86400
+        AllowCredentials: false
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 100
+        ThrottlingRateLimit: 50
 
   # S3 Bucket for image storage and job status
   PixelPromptBucket:
@@ -565,8 +606,8 @@ Outputs:
     Value: !Ref PixelPromptFunction
 
   ApiEndpoint:
-    Description: API Gateway endpoint URL (will be added in next task)
-    Value: "TBD"
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
 
   CloudFrontDomain:
     Description: CloudFront distribution domain
