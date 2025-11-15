@@ -9,9 +9,12 @@ import base64
 import json
 import os
 import requests
+import tempfile
 from typing import Dict, Any, Callable
 from openai import OpenAI
 import boto3
+from google import genai
+from google.genai import types
 
 
 def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
@@ -94,11 +97,38 @@ def handle_google_gemini(model_config: Dict, prompt: str, params: Dict) -> Dict:
         Standardized response dict
     """
     try:
-        print(f"Calling Google Gemini with model {model_config['name']}")
+        print(f"Calling Google Gemini 2.0 with prompt: {prompt[:50]}...")
+
+        # Create Gemini client
+        client = genai.Client(api_key=model_config['key'])
+
+        # Generate image with multimodal model
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp-image-generation',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=['Text', 'Image']
+            )
+        )
+
+        # Extract inline image data from response parts
+        image_data = None
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, 'inline_data') and part.inline_data:
+                image_data = part.inline_data.data
+                break
+
+        if not image_data:
+            raise ValueError("No image data found in Gemini response")
+
+        # Convert bytes to base64
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+
+        print(f"Gemini image generated successfully ({len(image_base64)} bytes)")
 
         return {
             'status': 'success',
-            'image': 'base64-placeholder-image-data',
+            'image': image_base64,
             'model': model_config['name'],
             'provider': 'google_gemini'
         }
@@ -125,12 +155,40 @@ def handle_google_imagen(model_config: Dict, prompt: str, params: Dict) -> Dict:
     Returns:
         Standardized response dict
     """
+    temp_file = None
     try:
-        print(f"Calling Google Imagen with model {model_config['name']}")
+        print(f"Calling Google Imagen 3.0 with prompt: {prompt[:50]}...")
+
+        # Create Imagen client
+        client = genai.Client(api_key=model_config['key'])
+
+        # Generate image
+        response = client.models.generate_images(
+            model='imagen-3.0-generate-002',
+            prompt=prompt,
+            config=types.GenerateImagesConfig(
+                number_of_images=1
+            )
+        )
+
+        # Extract image bytes from generated_images
+        image_bytes = response.generated_images[0].image.image_bytes
+
+        # Save to temporary file, then read as base64
+        # (matching existing implementation pattern)
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
+            temp_file = tmp.name
+            tmp.write(image_bytes)
+
+        # Read back as base64
+        with open(temp_file, 'rb') as f:
+            image_base64 = base64.b64encode(f.read()).decode('utf-8')
+
+        print(f"Imagen image generated successfully ({len(image_base64)} bytes)")
 
         return {
             'status': 'success',
-            'image': 'base64-placeholder-image-data',
+            'image': image_base64,
             'model': model_config['name'],
             'provider': 'google_imagen'
         }
@@ -143,6 +201,14 @@ def handle_google_imagen(model_config: Dict, prompt: str, params: Dict) -> Dict:
             'model': model_config['name'],
             'provider': 'google_imagen'
         }
+
+    finally:
+        # Clean up temp file
+        if temp_file and os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except Exception as e:
+                print(f"Warning: Failed to remove temp file {temp_file}: {e}")
 
 
 def handle_bedrock_nova(model_config: Dict, prompt: str, params: Dict) -> Dict:
