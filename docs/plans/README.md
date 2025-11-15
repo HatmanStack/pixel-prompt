@@ -49,27 +49,40 @@ Prepare API keys for desired AI models:
 | Phase | Goal | Est. Tokens | Prerequisites |
 |-------|------|-------------|---------------|
 | [Phase 0](Phase-0.md) | Architecture & Design Decisions | N/A | Read entire plan |
-| [Phase 1](Phase-1.md) | Backend Infrastructure & SAM Template | ~25,000 | AWS CLI configured |
-| [Phase 2](Phase-2.md) | Lambda - Dynamic Model Registry & Routing | ~30,000 | Phase 1 complete |
-| [Phase 3](Phase-3.md) | Lambda - Async Job Management & Parallel Processing | ~35,000 | Phase 2 complete |
-| [Phase 4](Phase-4.md) | Frontend Foundation - Vite React Setup | ~20,000 | Node.js installed |
-| [Phase 5](Phase-5.md) | Frontend - Core Image Generation UI | ~35,000 | Phase 4 complete |
-| [Phase 6](Phase-6.md) | Frontend - Gallery & Advanced Features | ~40,000 | Phase 5 complete |
-| [Phase 7](Phase-7.md) | Integration Testing & Documentation | ~15,000 | All phases complete |
+| [Phase 1](Phase-1.md) | Complete Backend Implementation | ~100,000 | AWS CLI configured |
+| [Phase 2](Phase-2.md) | Complete Frontend Implementation & Testing | ~100,000 | Phase 1 complete |
 
 **Total Estimated Tokens**: ~200,000
+
+## Implementation Approach
+
+This plan is organized into **2 major implementation phases**, each designed to fit within a ~100,000 token context window for optimal agent/engineer workflow:
+
+### Phase 0: Architecture & Design Foundation
+Read this first to understand all architectural decisions, design patterns, and conventions.
+
+### Phase 1: Complete Backend (~100K tokens)
+Build the entire AWS serverless backend in one cohesive phase:
+- Infrastructure (SAM, S3, CloudFront, API Gateway)
+- Dynamic model registry with intelligent routing
+- All 9+ provider handlers (OpenAI, AWS Bedrock, Google, Stability, BFL, Recraft, Generic)
+- Async job management with parallel execution
+- Rate limiting, content moderation, and image storage
+- Complete API implementation and integration testing
+
+### Phase 2: Complete Frontend & Testing (~100K tokens)
+Build the entire React frontend and perform final testing:
+- Vite React foundation and API client
+- Complete UI (prompt input, image grid, loading states)
+- Gallery browser and advanced features
+- Mobile optimizations and accessibility
+- End-to-end testing, security review, and production deployment
 
 ## Navigation
 
 - **Start Here**: [Phase 0 - Architecture & Design Decisions](Phase-0.md)
-- **Implementation Phases**:
-  1. [Backend Infrastructure & SAM Template](Phase-1.md)
-  2. [Lambda - Dynamic Model Registry & Routing](Phase-2.md)
-  3. [Lambda - Async Job Management & Parallel Processing](Phase-3.md)
-  4. [Frontend Foundation - Vite React Setup](Phase-4.md)
-  5. [Frontend - Core Image Generation UI](Phase-5.md)
-  6. [Frontend - Gallery & Advanced Features](Phase-6.md)
-  7. [Integration Testing & Documentation](Phase-7.md)
+- **Backend Implementation**: [Phase 1 - Complete Backend](Phase-1.md)
+- **Frontend Implementation**: [Phase 2 - Complete Frontend & Testing](Phase-2.md)
 
 ## Quick Start After Reading Plan
 
