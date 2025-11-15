@@ -1565,11 +1565,11 @@ feat(lambda): implement Stability AI, BFL, Recraft, and generic handlers
 
 ---
 
-## Phase Verification
+## Section 2 Complete
 
-### Complete Phase Checklist
+### Verification Checklist
 
-Before moving to Phase 3, verify:
+Before moving to Section 3, verify:
 
 - [ ] ModelRegistry successfully loads models from environment
 - [ ] Provider detection works for all known providers
@@ -2256,11 +2256,11 @@ test(lambda): add end-to-end integration tests
 
 ---
 
-## Phase Verification
+## Section 3 Complete
 
-### Complete Phase Checklist
+### Verification Checklist
 
-Before moving to Phase 4, verify:
+Before moving to Phase 2 (Frontend), verify:
 
 - [ ] Lambda creates jobs and returns job ID in < 1 second
 - [ ] Models execute in parallel (check CloudWatch logs for overlapping timestamps)
