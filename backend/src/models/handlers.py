@@ -115,6 +115,10 @@ def handle_google_gemini(model_config: Dict, prompt: str, params: Dict) -> Dict:
             )
         )
 
+        # Validate response structure
+        if not response.candidates or len(response.candidates) == 0:
+            raise ValueError("Gemini returned empty candidates array")
+
         # Extract inline image data from response parts
         image_data = None
         for part in response.candidates[0].content.parts:
@@ -174,6 +178,10 @@ def handle_google_imagen(model_config: Dict, prompt: str, params: Dict) -> Dict:
                 number_of_images=1
             )
         )
+
+        # Validate response structure
+        if not response.generated_images or len(response.generated_images) == 0:
+            raise ValueError("Imagen returned empty generated_images array")
 
         # Extract image bytes from generated_images
         image_bytes = response.generated_images[0].image.image_bytes
