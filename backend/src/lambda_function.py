@@ -67,12 +67,13 @@ def lambda_handler(event, context):
     Returns:
         API Gateway response object with status code and body
     """
-    print(f"Event: {json.dumps(event)}")
-
     # Extract path and method from API Gateway event
     path = event.get('rawPath', event.get('path', ''))
     method = event.get('requestContext', {}).get('http', {}).get('method',
              event.get('httpMethod', ''))
+
+    # Log request metadata only (not full event to avoid credential leaks)
+    print(f"Request: {method} {path}")
 
     try:
         # Route based on path and method
