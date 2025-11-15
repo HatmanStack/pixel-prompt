@@ -423,14 +423,14 @@ def handle_stability(model_config: Dict, prompt: str, params: Dict) -> Dict:
         }
 
 
-def handle_bfl(model_config: Dict, prompt: str, _params: Dict) -> Dict:
+def handle_bfl(model_config: Dict, prompt: str, params: Dict) -> Dict:
     """
     Handle image generation for Black Forest Labs (Flux).
 
     Args:
         model_config: Model configuration dict
         prompt: Text prompt for image generation
-        _params: Generation parameters (unused - Flux uses model defaults)
+        params: Generation parameters (supports max_poll_attempts, poll_interval_seconds)
 
     Returns:
         Standardized response dict
@@ -468,13 +468,14 @@ def handle_bfl(model_config: Dict, prompt: str, _params: Dict) -> Dict:
 
         print(f"BFL job started: {job_id}, polling for result...")
 
-        # Poll for result (max 2 minutes)
+        # Poll for result (tunable via params)
         result_url = f"https://api.bfl.ai/v1/get_result?id={job_id}"
-        max_attempts = 40  # 2 minutes / 3 seconds per attempt
+        max_attempts = params.get('max_poll_attempts', 40)  # Default: 40 attempts
+        poll_interval = params.get('poll_interval_seconds', 3)  # Default: 3 seconds
         attempt = 0
 
         while attempt < max_attempts:
-            time.sleep(3)
+            time.sleep(poll_interval)
             attempt += 1
 
             result_response = requests.get(result_url, headers=headers, timeout=10)
