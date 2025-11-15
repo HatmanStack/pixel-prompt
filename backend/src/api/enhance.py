@@ -6,6 +6,7 @@ Uses configured LLM to expand short prompts into detailed image generation promp
 
 from typing import Optional
 from openai import OpenAI
+from google import genai
 
 
 class PromptEnhancer:
@@ -51,7 +52,7 @@ Enhance the following prompt:"""
         Returns:
             Enhanced prompt string or None if enhancement fails
         """
-        if not prompt or len(prompt) == 0:
+        if not prompt:
             return None
 
         # Get prompt enhancement model
@@ -64,33 +65,56 @@ Enhance the following prompt:"""
         try:
             print(f"Enhancing prompt with model: {prompt_model['name']}")
 
-            # Initialize OpenAI client with timeout
-            # Most LLM APIs are OpenAI-compatible
-            client = OpenAI(api_key=prompt_model['key'], timeout=30.0)
-
-            # Call chat completions
-            # Determine model identifier based on provider
             provider = prompt_model['provider']
-            if provider == 'openai':
-                model_id = 'gpt-4o-mini'  # Fast and cheap
-            elif provider == 'google_gemini':
-                model_id = 'gemini-2.0-flash-exp'  # Text-only model
+
+            # Branch based on provider type
+            if provider == 'google_gemini':
+                # Use Google genai client for Gemini
+                client = genai.Client(api_key=prompt_model['key'])
+
+                response = client.models.generate_content(
+                    model='gemini-2.0-flash-exp',
+                    contents=f"{self.system_prompt}\n\n{prompt}"
+                )
+
+                # Extract text from Gemini response
+                if not response.candidates or len(response.candidates) == 0:
+                    raise ValueError("Gemini returned empty candidates")
+
+                enhanced = response.candidates[0].content.parts[0].text.strip()
+
             else:
-                # Use model name as-is for generic providers
-                model_id = prompt_model['name']
+                # Use OpenAI client for OpenAI and OpenAI-compatible providers
+                client_kwargs = {
+                    'api_key': prompt_model['key'],
+                    'timeout': 30.0
+                }
 
-            response = client.chat.completions.create(
-                model=model_id,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=200,
-                temperature=0.7
-            )
+                # Support custom base_url for OpenAI-compatible providers
+                if 'base_url' in prompt_model:
+                    client_kwargs['base_url'] = prompt_model['base_url']
 
-            # Extract enhanced prompt
-            enhanced = response.choices[0].message.content.strip()
+                client = OpenAI(**client_kwargs)
+
+                # Determine model identifier
+                if provider == 'openai':
+                    model_id = 'gpt-4o-mini'  # Fast and cheap
+                else:
+                    # Use model name as-is for generic providers
+                    model_id = prompt_model['name']
+
+                response = client.chat.completions.create(
+                    model=model_id,
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=200,
+                    temperature=0.7
+                )
+
+                # Extract enhanced prompt
+                enhanced = response.choices[0].message.content.strip()
 
             print(f"Original: {prompt}")
             print(f"Enhanced: {enhanced[:100]}...")
