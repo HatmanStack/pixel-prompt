@@ -64,9 +64,9 @@ Enhance the following prompt:"""
         try:
             print(f"Enhancing prompt with model: {prompt_model['name']}")
 
-            # Initialize OpenAI client
+            # Initialize OpenAI client with timeout
             # Most LLM APIs are OpenAI-compatible
-            client = OpenAI(api_key=prompt_model['key'])
+            client = OpenAI(api_key=prompt_model['key'], timeout=30.0)
 
             # Call chat completions
             # Determine model identifier based on provider

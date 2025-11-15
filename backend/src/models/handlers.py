@@ -32,8 +32,8 @@ def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
     try:
         print(f"Calling OpenAI DALL-E 3 with prompt: {prompt[:50]}...")
 
-        # Initialize OpenAI client
-        client = OpenAI(api_key=model_config['key'])
+        # Initialize OpenAI client with timeout
+        client = OpenAI(api_key=model_config['key'], timeout=120.0)
 
         # Call DALL-E 3 image generation
         response = client.images.generate(
@@ -43,6 +43,10 @@ def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
             quality="standard",
             n=1
         )
+
+        # Validate response structure
+        if not response.data or len(response.data) == 0:
+            raise ValueError("OpenAI returned empty data array")
 
         # Extract image URL from response
         image_url = response.data[0].url
@@ -595,7 +599,7 @@ def handle_generic(model_config: Dict, prompt: str, params: Dict) -> Dict:
 
         # Try as OpenAI-compatible API
         # Use the model name as-is
-        client = OpenAI(api_key=model_config['key'])
+        client = OpenAI(api_key=model_config['key'], timeout=120.0)
 
         response = client.images.generate(
             model=model_config['name'],
@@ -603,6 +607,10 @@ def handle_generic(model_config: Dict, prompt: str, params: Dict) -> Dict:
             size="1024x1024",
             n=1
         )
+
+        # Validate response structure
+        if not response.data or len(response.data) == 0:
+            raise ValueError("Generic handler returned empty data array")
 
         # Extract image URL
         image_url = response.data[0].url
