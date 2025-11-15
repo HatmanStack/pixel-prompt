@@ -598,7 +598,16 @@ def handle_generic(model_config: Dict, prompt: str, params: Dict) -> Dict:
 
         # Try as OpenAI-compatible API
         # Use the model name as-is
-        client = OpenAI(api_key=model_config['key'], timeout=120.0)
+        client_kwargs = {
+            'api_key': model_config['key'],
+            'timeout': 120.0
+        }
+
+        # Support custom base_url for OpenAI-compatible providers
+        if 'base_url' in model_config:
+            client_kwargs['base_url'] = model_config['base_url']
+
+        client = OpenAI(**client_kwargs)
 
         response = client.images.generate(
             model=model_config['name'],
