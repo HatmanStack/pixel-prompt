@@ -6,8 +6,6 @@ This phase combines all backend work: infrastructure setup, dynamic model regist
 
 ---
 
-# Phase 1: Complete Backend Implementation
-
 ## Phase Goal
 
 Build the complete AWS Lambda backend including infrastructure (SAM template, S3, CloudFront, API Gateway), dynamic model registry with intelligent routing, async job management with parallel execution, rate limiting, content moderation, and all API endpoints. This phase delivers a fully functional backend ready for frontend integration.
@@ -1086,382 +1084,14 @@ feat(backend): optimize infrastructure for production
 
 ---
 
-## Section 2: Model Registry & Routing (Tasks 9-16)
+## Section 2: Model Registry & Intelligent Routing (Tasks 9-15)
 
-### Task 9: Model Registry Module
+This section implements the dynamic model registry system that parses environment variables, detects AI providers from model names, and routes requests to appropriate handler functions. This builds the intelligent routing layer that allows flexible model configuration without code changes.
 
-**Goal**: Create dynamic model registry that loads configurations from environment
-
-**Files to Create**:
-- `/backend/src/models/__init__.py` - Package initialization
-- `/backend/src/models/registry.py` - Model registry implementation
-
-**Prerequisites**: Task 8 complete
-
-**Implementation Steps**:
-
-1. Create `models/__init__.py`:
-   ```python
-   from .registry import ModelRegistry, get_registry
-
-   __all__ = ['ModelRegistry', 'get_registry']
-   ```
-
-2. Create `models/registry.py`:
-   ```python
-   import os
-   from typing import List, Dict, Optional
-
-   class ModelRegistry:
-       """
-       Manages model configurations loaded from environment variables.
-       Supports 1-20 dynamically configured models.
-       """
-
-       def __init__(self):
-           self.models: List[Dict] = []
-           self.model_count = int(os.environ.get('MODEL_COUNT', 9))
-           self.prompt_model_index = int(os.environ.get('PROMPT_MODEL_INDEX', 1))
-           self._load_models()
-           self._validate()
-
-       def _load_models(self):
-           """Load models from MODEL_N_NAME and MODEL_N_KEY environment variables"""
-           for i in range(1, 21):  # Check all 20 possible slots
-               name = os.environ.get(f'MODEL_{i}_NAME', '').strip()
-               key = os.environ.get(f'MODEL_{i}_KEY', '').strip()
-
-               if name and key:
-                   provider = self._detect_provider(name)
-                   self.models.append({
-                       'index': i,
-                       'name': name,
-                       'key': key,
-                       'provider': provider
-                   })
-                   print(f"Loaded model {i}: {name} (provider: {provider})")
-
-       def _detect_provider(self, model_name: str) -> str:
-           """
-           Detect provider from model name using pattern matching.
-           Returns provider identifier for routing.
-           """
-           name_lower = model_name.lower()
-
-           # OpenAI
-           if any(x in name_lower for x in ['dalle', 'dall-e', 'gpt', 'chatgpt', 'openai']):
-               return 'openai'
-
-           # Google Gemini
-           if 'gemini' in name_lower:
-               return 'google_gemini'
-
-           # Google Imagen
-           if 'imagen' in name_lower:
-               return 'google_imagen'
-
-           # Stability AI
-           if any(x in name_lower for x in ['stable diffusion', 'sd', 'sdxl', 'stability']):
-               return 'stability'
-
-           # Black Forest Labs
-           if any(x in name_lower for x in ['flux', 'black forest', 'bfl']):
-               return 'bfl'
-
-           # Recraft
-           if 'recraft' in name_lower:
-               return 'recraft'
-
-           # AWS Bedrock Nova
-           if any(x in name_lower for x in ['nova', 'amazon nova', 'aws nova']):
-               return 'bedrock_nova'
-
-           # AWS Bedrock Stable Diffusion
-           if 'bedrock' in name_lower and 'stable' in name_lower:
-               return 'bedrock_sd'
-
-           # Hunyuan
-           if 'hunyuan' in name_lower:
-               return 'generic'  # Will use generic handler
-
-           # Qwen
-           if 'qwen' in name_lower:
-               return 'generic'
-
-           # Default to generic handler
-           print(f"Unknown provider for model '{model_name}', using generic handler")
-           return 'generic'
-
-       def _validate(self):
-           """Validate configuration"""
-           actual_count = len(self.models)
-
-           if actual_count != self.model_count:
-               print(f"WARNING: MODEL_COUNT is {self.model_count} but {actual_count} models configured")
-
-           if actual_count == 0:
-               print("ERROR: No models configured!")
-               raise ValueError("At least one model must be configured")
-
-           if self.prompt_model_index < 1 or self.prompt_model_index > actual_count:
-               print(f"WARNING: PROMPT_MODEL_INDEX {self.prompt_model_index} out of range (1-{actual_count}), using model 1")
-               self.prompt_model_index = 1
-
-       def get_all_models(self) -> List[Dict]:
-           """Get all configured models"""
-           return self.models
-
-       def get_model_by_index(self, index: int) -> Optional[Dict]:
-           """Get model by index (1-based)"""
-           for model in self.models:
-               if model['index'] == index:
-                   return model
-           return None
-
-       def get_prompt_model(self) -> Dict:
-           """Get model to use for prompt enhancement"""
-           return self.get_model_by_index(self.prompt_model_index) or self.models[0]
-
-       def __len__(self):
-           return len(self.models)
-
-       def __repr__(self):
-           return f"ModelRegistry({len(self.models)} models)"
-
-   # Global singleton instance
-   _registry = None
-
-   def get_registry() -> ModelRegistry:
-       """Get global ModelRegistry instance (singleton)"""
-       global _registry
-       if _registry is None:
-           _registry = ModelRegistry()
-       return _registry
-   ```
-
-3. Update `lambda_function.py` to use registry:
-   ```python
-   from models import get_registry
-
-   # Initialize at module level (outside handler)
-   registry = get_registry()
-
-   def lambda_handler(event, context):
-       print(f"Models configured: {len(registry)}")
-       # ... rest of handler
-   ```
-
-**Verification Checklist**:
-- [ ] ModelRegistry successfully loads models from environment
-- [ ] Provider detection works for all known providers
-- [ ] Validation prevents crashes from misconfiguration
-- [ ] get_prompt_model() returns correct model
-- [ ] Singleton pattern works (same instance reused)
-- [ ] Logs show loaded models and providers
-
-**Testing Instructions**:
-- Unit test ModelRegistry with mocked environment variables
-- Test with 1, 9, and 20 models
-- Test provider detection for each known provider
-- Test with MODEL_COUNT mismatch (should warn but not crash)
-- Deploy and check CloudWatch logs for loaded models
-
-**Commit Message Template**:
-```
-feat(lambda): implement dynamic model registry
-
-- Create ModelRegistry class to parse environment variables
-- Load MODEL_COUNT and MODEL_N_* configs dynamically
-- Implement provider detection with pattern matching
-- Add validation for model count and prompt model index
-- Support 1-20 configurable models with singleton pattern
-```
-
-**Estimated Tokens**: ~6,000
-
----
-
-### Task 10: Model Handler Stubs
-
-**Goal**: Create stub functions for each provider handler
-
-**Files to Create**:
-- `/backend/src/models/handlers.py` - Provider-specific handler stubs
-
-**Prerequisites**: Task 9 complete
-
-**Implementation Steps**:
-
-1. Create `models/handlers.py` with handler stubs:
-   ```python
-   """
-   Model handlers for different AI providers.
-   Each handler takes standardized inputs and returns standardized outputs.
-   """
-   from typing import Dict, Any
-   import base64
-
-   # Standard handler signature
-   # def handler(model_config: Dict, prompt: str, params: Dict) -> Dict:
-   #     Returns: {'status': 'success'|'error', 'image': 'base64', 'model': 'name', 'error': 'message'}
-
-   def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """OpenAI DALL-E 3 handler"""
-       print(f"[OpenAI] Calling {model_config['name']} with prompt: {prompt[:50]}...")
-
-       try:
-           # Placeholder - will implement in next task
-           return {
-               'status': 'success',
-               'image': 'base64-placeholder-image-data',
-               'model': model_config['name'],
-               'provider': 'openai'
-           }
-       except Exception as e:
-           return {
-               'status': 'error',
-               'model': model_config['name'],
-               'provider': 'openai',
-               'error': str(e)
-           }
-
-   def handle_google_gemini(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """Google Gemini 2.0 handler"""
-       print(f"[Gemini] Calling {model_config['name']}")
-       try:
-           return {'status': 'success', 'image': 'base64-placeholder', 'model': model_config['name'], 'provider': 'google_gemini'}
-       except Exception as e:
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'google_gemini', 'error': str(e)}
-
-   def handle_google_imagen(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """Google Imagen 3.0 handler"""
-       print(f"[Imagen] Calling {model_config['name']}")
-       try:
-           return {'status': 'success', 'image': 'base64-placeholder', 'model': model_config['name'], 'provider': 'google_imagen'}
-       except Exception as e:
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'google_imagen', 'error': str(e)}
-
-   def handle_stability(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """Stability AI handler"""
-       print(f"[Stability] Calling {model_config['name']}")
-       try:
-           return {'status': 'success', 'image': 'base64-placeholder', 'model': model_config['name'], 'provider': 'stability'}
-       except Exception as e:
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'stability', 'error': str(e)}
-
-   def handle_bfl(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """Black Forest Labs (Flux) handler"""
-       print(f"[BFL] Calling {model_config['name']}")
-       try:
-           return {'status': 'success', 'image': 'base64-placeholder', 'model': model_config['name'], 'provider': 'bfl'}
-       except Exception as e:
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'bfl', 'error': str(e)}
-
-   def handle_recraft(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """Recraft v3 handler"""
-       print(f"[Recraft] Calling {model_config['name']}")
-       try:
-           return {'status': 'success', 'image': 'base64-placeholder', 'model': model_config['name'], 'provider': 'recraft'}
-       except Exception as e:
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'recraft', 'error': str(e)}
-
-   def handle_bedrock_nova(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """AWS Bedrock Nova Canvas handler"""
-       print(f"[Bedrock Nova] Calling {model_config['name']}")
-       try:
-           return {'status': 'success', 'image': 'base64-placeholder', 'model': model_config['name'], 'provider': 'bedrock_nova'}
-       except Exception as e:
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'bedrock_nova', 'error': str(e)}
-
-   def handle_bedrock_sd(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """AWS Bedrock Stable Diffusion handler"""
-       print(f"[Bedrock SD] Calling {model_config['name']}")
-       try:
-           return {'status': 'success', 'image': 'base64-placeholder', 'model': model_config['name'], 'provider': 'bedrock_sd'}
-       except Exception as e:
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'bedrock_sd', 'error': str(e)}
-
-   def handle_generic(model_config: Dict, prompt: str, params: Dict) -> Dict:
-       """
-       Generic fallback handler for unknown providers.
-       Attempts OpenAI-compatible API call.
-       """
-       print(f"[Generic] Calling {model_config['name']} (OpenAI-compatible attempt)")
-       try:
-           # Will implement generic OpenAI-compatible call later
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'generic',
-                   'error': 'Generic handler not yet implemented'}
-       except Exception as e:
-           return {'status': 'error', 'model': model_config['name'], 'provider': 'generic', 'error': str(e)}
-
-   # Handler dispatcher
-   HANDLERS = {
-       'openai': handle_openai,
-       'google_gemini': handle_google_gemini,
-       'google_imagen': handle_google_imagen,
-       'stability': handle_stability,
-       'bfl': handle_bfl,
-       'recraft': handle_recraft,
-       'bedrock_nova': handle_bedrock_nova,
-       'bedrock_sd': handle_bedrock_sd,
-       'generic': handle_generic
-   }
-
-   def get_handler(provider: str):
-       """Get handler function for provider"""
-       return HANDLERS.get(provider, handle_generic)
-   ```
-
-**Verification Checklist**:
-- [ ] All handler functions follow same signature
-- [ ] Each handler returns standardized response format
-- [ ] get_handler() returns correct function for each provider
-- [ ] Unknown providers return generic handler
-- [ ] Error handling prevents crashes
-
-**Testing Instructions**:
-- Unit test each handler with mock inputs
-- Test get_handler() for all providers
-- Verify error responses have correct format
-- Deploy and test via API (will return placeholder responses)
-
-**Commit Message Template**:
-```
-feat(lambda): create provider handler stubs
-
-- Implement handler functions for all 9 providers
-- Standardize handler signature (model_config, prompt, params)
-- Standardize return format (status, image, model, error)
-- Add get_handler() dispatcher function
-- Include error handling in each handler
-```
-
-**Estimated Tokens**: ~5,000
-
----
-
-*[Continuing with remaining tasks 11-16 for implementing actual handlers, then Section 3 for job management...]*
-
-Due to length constraints, I'll note that the complete Phase 1 would continue with:
-
-**Tasks 11-16**: Implement actual handlers (OpenAI, AWS Bedrock, Google, Stability, BFL, Recraft, Generic)
-**Section 3 (Tasks 17-24)**: Job Management, Async Execution, Rate Limiting, Content Filtering, Image Storage, API Integration, Testing
-
-Each following the same detailed format with implementation steps, verification, testing, and commit messages.
-
-**Total estimated for complete Phase 1: ~100,000 tokens**
-
-Would you like me to continue writing out the complete Phase 1 with all remaining tasks?
-# Phase 2: Lambda - Dynamic Model Registry & Routing
-
-## Phase Goal
-
-Implement the dynamic model registry system that parses environment variables, detects AI providers from model names, and routes requests to appropriate handler functions. This phase focuses on building the intelligent routing layer that allows flexible model configuration without code changes.
-
-**Success Criteria**:
+**Section Goal**:
 - Lambda successfully parses MODEL_COUNT and MODEL_N_* environment variables
 - Provider detection logic correctly identifies AI providers from model names
-- Each provider has a dedicated handler function (stubbed initially)
+- Each provider has a dedicated handler function (OpenAI, AWS Bedrock, Google, Stability AI, BFL, Recraft, generic)
 - Generic fallback handler exists for unknown models
 - Model registry is testable and maintainable
 
@@ -1469,18 +1099,16 @@ Implement the dynamic model registry system that parses environment variables, d
 
 ---
 
-## Prerequisites
+### Prerequisites
 
-- Phase 1 complete (infrastructure deployed)
+- Section 1 complete (infrastructure deployed)
 - Familiarity with existing model handlers in `/pixel-prompt-lambda/utils.py`
 - Understanding of provider APIs (OpenAI, Stability AI, BFL, Google, Recraft)
 - AWS Bedrock access enabled (for Nova Canvas and Stable Diffusion)
 
 ---
 
-## Tasks
-
-### Task 1: Model Registry Module
+### Task 9: Model Registry Module
 
 **Goal**: Create the model registry that loads and manages model configurations
 
@@ -1488,7 +1116,7 @@ Implement the dynamic model registry system that parses environment variables, d
 - `/backend/src/models/registry.py` - Model registry implementation
 - `/backend/src/models/__init__.py` - Package initialization
 
-**Prerequisites**: Phase 1 Task 5 complete
+**Prerequisites**: Task 8 complete
 
 **Implementation Steps**:
 
@@ -1542,14 +1170,14 @@ feat(lambda): implement model registry system
 
 ---
 
-### Task 2: Provider Detection Logic
+### Task 10: Provider Detection Logic
 
 **Goal**: Implement intelligent provider detection from model names
 
 **Files to Modify**:
 - `/backend/src/models/registry.py`
 
-**Prerequisites**: Task 1 complete
+**Prerequisites**: Task 9 complete
 
 **Implementation Steps**:
 
@@ -1614,14 +1242,14 @@ feat(lambda): add intelligent provider detection
 
 ---
 
-### Task 3: Provider Handler Stubs
+### Task 11: Provider Handler Stubs
 
 **Goal**: Create stub handler functions for each AI provider
 
 **Files to Create**:
 - `/backend/src/models/handlers.py` - Provider-specific handlers
 
-**Prerequisites**: Task 2 complete
+**Prerequisites**: Task 10 complete
 
 **Implementation Steps**:
 
@@ -1677,7 +1305,7 @@ feat(lambda): create provider handler stubs
 
 ---
 
-### Task 4: Implement OpenAI Handler
+### Task 12: Implement OpenAI Handler
 
 **Goal**: Implement the real OpenAI (DALL-E 3) handler based on existing code
 
@@ -1685,7 +1313,7 @@ feat(lambda): create provider handler stubs
 - `/backend/src/models/handlers.py`
 - `/backend/requirements.txt` (add `openai` package)
 
-**Prerequisites**: Task 3 complete, reference `/pixel-prompt-lambda/utils.py` lines 13-32
+**Prerequisites**: Task 11 complete, reference `/pixel-prompt-lambda/utils.py` lines 13-32
 
 **Implementation Steps**:
 
@@ -1738,14 +1366,14 @@ feat(lambda): implement OpenAI DALL-E 3 handler
 
 ---
 
-### Task 5: Implement AWS Bedrock Handlers
+### Task 13: Implement AWS Bedrock Handlers
 
 **Goal**: Implement handlers for AWS Bedrock models (Nova Canvas, Stable Diffusion)
 
 **Files to Modify**:
 - `/backend/src/models/handlers.py`
 
-**Prerequisites**: Task 4 complete, reference `/pixel-prompt-lambda/utils.py` lines 34-81
+**Prerequisites**: Task 12 complete, reference `/pixel-prompt-lambda/utils.py` lines 34-81
 
 **Implementation Steps**:
 
@@ -1813,7 +1441,7 @@ feat(lambda): implement AWS Bedrock handlers
 
 ---
 
-### Task 6: Implement Google Handlers
+### Task 14: Implement Google Handlers
 
 **Goal**: Implement handlers for Google Gemini 2.0 and Imagen 3.0
 
@@ -1821,7 +1449,7 @@ feat(lambda): implement AWS Bedrock handlers
 - `/backend/src/models/handlers.py`
 - `/backend/requirements.txt` (add `google-genai` package)
 
-**Prerequisites**: Task 5 complete, reference `/pixel-prompt-lambda/utils.py` lines 83-127
+**Prerequisites**: Task 13 complete, reference `/pixel-prompt-lambda/utils.py` lines 83-127
 
 **Implementation Steps**:
 
@@ -1872,14 +1500,14 @@ feat(lambda): implement Google Gemini and Imagen handlers
 
 ---
 
-### Task 7: Implement Remaining Handlers
+### Task 15: Implement Remaining Handlers
 
 **Goal**: Implement handlers for Stability AI, BFL, Recraft, and generic fallback
 
 **Files to Modify**:
 - `/backend/src/models/handlers.py`
 
-**Prerequisites**: Task 6 complete, reference `/pixel-prompt-lambda/utils.py`
+**Prerequisites**: Task 14 complete, reference `/pixel-prompt-lambda/utils.py`
 
 **Implementation Steps**:
 
@@ -1937,11 +1565,11 @@ feat(lambda): implement Stability AI, BFL, Recraft, and generic handlers
 
 ---
 
-## Phase Verification
+## Section 2 Complete
 
-### Complete Phase Checklist
+### Verification Checklist
 
-Before moving to Phase 3, verify:
+Before moving to Section 3, verify:
 
 - [ ] ModelRegistry successfully loads models from environment
 - [ ] Provider detection works for all known providers
@@ -1987,24 +1615,13 @@ Before moving to Phase 3, verify:
    assert 'image' in result
    ```
 
-### Known Limitations
-
-- Handlers are implemented but not integrated into Lambda handler (Phase 3)
-- No parallel execution yet (Phase 3)
-- No job status storage (Phase 3)
-
 ---
 
-## Next Phase
+## Section 3: Async Job Management & Parallel Processing (Tasks 16-23)
 
-Proceed to **[Phase 3: Lambda - Async Job Management & Parallel Processing](Phase-3.md)** to integrate handlers with job management and parallel execution.
-# Phase 3: Lambda - Async Job Management & Parallel Processing
+This section implements the asynchronous job management system with parallel model execution, job status tracking in S3, rate limiting, and content moderation. This integrates the model registry and handlers from Section 2 into a complete backend system that processes multiple models concurrently and provides real-time progress updates.
 
-## Phase Goal
-
-Implement the asynchronous job management system with parallel model execution, job status tracking in S3, rate limiting, and content moderation. This phase integrates the model registry and handlers from Phase 2 into a complete backend system that processes multiple models concurrently and provides real-time progress updates.
-
-**Success Criteria**:
+**Section Goal**:
 - Lambda creates unique job IDs and returns immediately (< 1s response)
 - Multiple models execute in parallel using threading
 - Job status is stored in S3 and updated as models complete
@@ -2018,18 +1635,16 @@ Implement the asynchronous job management system with parallel model execution, 
 
 ---
 
-## Prerequisites
+### Prerequisites
 
-- Phase 2 complete (model registry and handlers working)
+- Section 2 complete (model registry and handlers working)
 - Understanding of Python threading and concurrent.futures
 - Familiarity with S3 operations (put_object, get_object)
 - Knowledge of existing rate limiting implementation from `pixel-prompt-lambda`
 
 ---
 
-## Tasks
-
-### Task 1: Job Manager Module
+### Task 16: Job Manager Module
 
 **Goal**: Create job lifecycle management system with S3-based status storage
 
@@ -2037,7 +1652,7 @@ Implement the asynchronous job management system with parallel model execution, 
 - `/backend/src/jobs/manager.py` - Job management logic
 - `/backend/src/jobs/__init__.py` - Package initialization
 
-**Prerequisites**: Phase 2 complete
+**Prerequisites**: Section 2 complete
 
 **Implementation Steps**:
 
@@ -2122,14 +1737,14 @@ feat(lambda): implement job management system
 
 ---
 
-### Task 2: Image Storage Module
+### Task 17: Image Storage Module
 
 **Goal**: Create module to save generated images to S3 with metadata
 
 **Files to Create**:
 - `/backend/src/utils/storage.py` - S3 storage utilities
 
-**Prerequisites**: Task 1 complete, reference `/pixel-prompt-lambda/image_processing.py`
+**Prerequisites**: Task 16 complete, reference `/pixel-prompt-lambda/image_processing.py`
 
 **Implementation Steps**:
 
@@ -2194,14 +1809,14 @@ feat(lambda): implement image storage module
 
 ---
 
-### Task 3: Parallel Execution Engine
+### Task 18: Parallel Execution Engine
 
 **Goal**: Implement parallel model execution using threading
 
 **Files to Create**:
 - `/backend/src/jobs/executor.py` - Parallel execution engine
 
-**Prerequisites**: Task 2 complete, Phase 2 complete
+**Prerequisites**: Task 17 complete, Section 2 complete
 
 **Implementation Steps**:
 
@@ -2272,14 +1887,14 @@ feat(lambda): implement parallel model execution
 
 ---
 
-### Task 4: Rate Limiting Module
+### Task 19: Rate Limiting Module
 
 **Goal**: Port existing rate limiting logic to new codebase
 
 **Files to Create**:
 - `/backend/src/utils/rate_limit.py` - Rate limiting logic
 
-**Prerequisites**: Task 3 complete, reference `/pixel-prompt-lambda/lambda_function.py` lines 32-78
+**Prerequisites**: Task 18 complete, reference `/pixel-prompt-lambda/lambda_function.py` lines 32-78
 
 **Implementation Steps**:
 
@@ -2344,14 +1959,14 @@ feat(lambda): implement rate limiting with S3 tracking
 
 ---
 
-### Task 5: Content Moderation Module
+### Task 20: Content Moderation Module
 
 **Goal**: Implement NSFW/inappropriate content filtering
 
 **Files to Create**:
 - `/backend/src/utils/content_filter.py` - Content moderation
 
-**Prerequisites**: Task 4 complete, reference `/pixel-prompt-lambda/prompt.py`
+**Prerequisites**: Task 19 complete, reference `/pixel-prompt-lambda/prompt.py`
 
 **Implementation Steps**:
 
@@ -2404,14 +2019,14 @@ feat(lambda): implement content moderation filter
 
 ---
 
-### Task 6: API Endpoints Implementation
+### Task 21: API Endpoints Implementation
 
 **Goal**: Integrate all modules into Lambda handler with three API endpoints
 
 **Files to Modify**:
 - `/backend/src/lambda_function.py`
 
-**Prerequisites**: Tasks 1-5 complete
+**Prerequisites**: Tasks 16-20 complete
 
 **Implementation Steps**:
 
@@ -2501,14 +2116,14 @@ feat(lambda): implement API endpoints with job management
 
 ---
 
-### Task 7: Prompt Enhancement Implementation
+### Task 22: Prompt Enhancement Implementation
 
 **Goal**: Implement prompt enhancement using configured model
 
 **Files to Create/Modify**:
 - `/backend/src/api/enhance.py` - Prompt enhancement logic
 
-**Prerequisites**: Task 6 complete
+**Prerequisites**: Task 21 complete
 
 **Implementation Steps**:
 
@@ -2566,14 +2181,14 @@ feat(lambda): implement prompt enhancement with LLM
 
 ---
 
-### Task 8: End-to-End Integration Testing
+### Task 23: End-to-End Integration Testing
 
 **Goal**: Test complete workflow from request to image generation
 
 **Files to Create**:
 - `/backend/tests/test_integration.py` - Integration tests
 
-**Prerequisites**: Tasks 1-7 complete
+**Prerequisites**: Tasks 16-22 complete
 
 **Implementation Steps**:
 
@@ -2641,11 +2256,11 @@ test(lambda): add end-to-end integration tests
 
 ---
 
-## Phase Verification
+## Section 3 Complete
 
-### Complete Phase Checklist
+### Verification Checklist
 
-Before moving to Phase 4, verify:
+Before moving to Phase 2 (Frontend), verify:
 
 - [ ] Lambda creates jobs and returns job ID in < 1 second
 - [ ] Models execute in parallel (check CloudWatch logs for overlapping timestamps)
@@ -2703,6 +2318,6 @@ done
 
 ---
 
-## Next Phase
+## Phase Complete!
 
-Proceed to **[Phase 4: Frontend Foundation - Vite React Setup](Phase-4.md)** to build the web interface.
+All backend infrastructure and functionality is now implemented. Proceed to **[Phase 2: Complete Frontend Implementation & Testing](Phase-2.md)** to build the web interface.
