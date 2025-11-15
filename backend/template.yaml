@@ -521,7 +521,7 @@ Resources:
   PixelPromptBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'pixel-prompt-complete-${AWS::AccountId}'
+      BucketName: !Sub 'pixel-prompt-complete-${Environment}-${AWS::AccountId}'
       VersioningConfiguration:
         Status: Disabled
       PublicAccessBlockConfiguration:
