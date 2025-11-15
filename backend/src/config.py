@@ -48,7 +48,7 @@ if prompt_model_index < 1 or prompt_model_index > len(models):
 perm_negative_prompt = "ugly, blurry, low quality, distorted"
 
 # Print configuration summary at initialization
-print(f"Loaded configuration:")
+print("Loaded configuration:")
 print(f"  - Models configured: {len(models)}/{model_count}")
 print(f"  - S3 Bucket: {s3_bucket}")
 print(f"  - CloudFront Domain: {cloudfront_domain}")
