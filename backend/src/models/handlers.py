@@ -163,7 +163,6 @@ def handle_google_imagen(model_config: Dict, prompt: str, params: Dict) -> Dict:
     Returns:
         Standardized response dict
     """
-    temp_file = None
     try:
         print(f"Calling Google Imagen 3.0 with prompt: {prompt[:50]}...")
 
@@ -186,15 +185,8 @@ def handle_google_imagen(model_config: Dict, prompt: str, params: Dict) -> Dict:
         # Extract image bytes from generated_images
         image_bytes = response.generated_images[0].image.image_bytes
 
-        # Save to temporary file, then read as base64
-        # (matching existing implementation pattern)
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
-            temp_file = tmp.name
-            tmp.write(image_bytes)
-
-        # Read back as base64
-        with open(temp_file, 'rb') as f:
-            image_base64 = base64.b64encode(f.read()).decode('utf-8')
+        # Convert bytes directly to base64
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
         print(f"Imagen image generated successfully ({len(image_base64)} bytes)")
 
@@ -213,14 +205,6 @@ def handle_google_imagen(model_config: Dict, prompt: str, params: Dict) -> Dict:
             'model': model_config['name'],
             'provider': 'google_imagen'
         }
-
-    finally:
-        # Clean up temp file
-        if temp_file and os.path.exists(temp_file):
-            try:
-                os.remove(temp_file)
-            except Exception as e:
-                print(f"Warning: Failed to remove temp file {temp_file}: {e}")
 
 
 def handle_bedrock_nova(model_config: Dict, prompt: str, params: Dict) -> Dict:
