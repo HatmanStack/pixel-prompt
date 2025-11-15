@@ -164,6 +164,13 @@ def handle_generate(event):
 
         # Start background execution in separate thread
         # This allows Lambda to return immediately while processing continues
+        #
+        # WARNING: This pattern has limitations in Lambda environment:
+        # - Lambda may freeze/terminate the container after handler returns
+        # - Background threads may not complete if container is terminated
+        # - Job status is saved to S3, so partial results are preserved
+        # - For production, consider: Step Functions, SQS, or synchronous execution
+        # - This works for MVP due to Lambda container reuse and S3 persistence
         thread = threading.Thread(
             target=job_executor.execute_job,
             args=(job_id, prompt, params, target)
