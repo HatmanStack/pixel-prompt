@@ -3,7 +3,7 @@
  * Grid layout for displaying 9 generated images
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ImageCard from './ImageCard';
 import styles from './ImageGrid.module.css';
 
@@ -31,6 +31,22 @@ function ImageGrid({ images, modelNames = [] }) {
     setExpandedImage(null);
   };
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && expandedImage) {
+        handleCloseModal();
+      }
+    };
+
+    if (expandedImage) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [expandedImage]);
+
   return (
     <>
       <div className={styles.grid}>
@@ -47,7 +63,7 @@ function ImageGrid({ images, modelNames = [] }) {
       </div>
 
       {/* Image Modal */}
-      {expandedImage && (
+      {expandedImage && expandedImage.image && (
         <div
           className={styles.modal}
           onClick={handleCloseModal}

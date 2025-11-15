@@ -84,9 +84,9 @@ export async function generateImages(prompt, params = {}) {
     method: 'POST',
     body: JSON.stringify({
       prompt,
-      steps: params.steps || 28,
-      guidance: params.guidance || 5,
-      control: params.control || 1.0,
+      steps: params.steps ?? 28,
+      guidance: params.guidance ?? 5,
+      control: params.control ?? 1.0,
     }),
   });
 }

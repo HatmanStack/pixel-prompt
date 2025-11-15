@@ -21,6 +21,8 @@ function useImageLoader(jobStatus, cloudFrontDomain = '') {
   const blobUrlsRef = useRef([]);
   // Track which images have been fetched
   const fetchedRef = useRef(new Set());
+  // Track current job ID to prevent cross-job contamination
+  const currentJobIdRef = useRef(null);
 
   // Cleanup blob URLs on unmount
   useEffect(() => {
@@ -36,6 +38,9 @@ function useImageLoader(jobStatus, cloudFrontDomain = '') {
       return;
     }
 
+    const currentJobId = jobStatus.jobId;
+    currentJobIdRef.current = currentJobId;
+
     const loadImage = async (result, index) => {
       // Skip if already fetched
       const fetchKey = `${index}-${result.completedAt || ''}`;
@@ -43,7 +48,12 @@ function useImageLoader(jobStatus, cloudFrontDomain = '') {
         return;
       }
 
-      // Mark as loading
+      // Skip if no image data available yet
+      if (!result.output && !result.imageUrl) {
+        return;
+      }
+
+      // Mark as loading (only after confirming we have data to load)
       setLoadingStates(prev => {
         const newStates = [...prev];
         newStates[index] = true;
@@ -62,14 +72,21 @@ function useImageLoader(jobStatus, cloudFrontDomain = '') {
         else if (result.imageUrl) {
           const imageData = await fetchImageFromS3(result.imageUrl, cloudFrontDomain);
 
+          // Check if job changed during async fetch
+          if (currentJobIdRef.current !== currentJobId) {
+            return;
+          }
+
           if (imageData.output) {
             imageUrl = base64ToBlobUrl(imageData.output);
             blobUrlsRef.current.push(imageUrl);
           } else {
             throw new Error('No image data in response');
           }
-        } else {
-          // No image available yet
+        }
+
+        // Check again if job changed before updating state
+        if (currentJobIdRef.current !== currentJobId) {
           return;
         }
 
@@ -91,6 +108,11 @@ function useImageLoader(jobStatus, cloudFrontDomain = '') {
         fetchedRef.current.add(fetchKey);
       } catch (error) {
         console.error(`Error loading image ${index}:`, error);
+
+        // Check if job changed during error handling
+        if (currentJobIdRef.current !== currentJobId) {
+          return;
+        }
 
         // Set error
         setErrors(prev => {

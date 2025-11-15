@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { enhancePrompt } from '../../api/client';
 import styles from './PromptEnhancer.module.css';
 
-function PromptEnhancer({ currentPrompt, onUsePrompt, disabled = false }) {
+function PromptEnhancer({ currentPrompt = '', onUsePrompt, disabled = false }) {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [enhancedPrompt, setEnhancedPrompt] = useState(null);
   const [error, setError] = useState(null);

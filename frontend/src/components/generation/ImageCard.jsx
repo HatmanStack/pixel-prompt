@@ -3,7 +3,7 @@
  * Individual image card with loading states
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { downloadImage } from '../../utils/imageHelpers';
 import styles from './ImageCard.module.css';
 
@@ -17,6 +17,11 @@ function ImageCard({
   const [imageError, setImageError] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
+  // Reset imageError when image prop changes
+  useEffect(() => {
+    setImageError(false);
+  }, [image]);
+
   const handleImageError = () => {
     setImageError(true);
   };
@@ -27,11 +32,19 @@ function ImageCard({
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (status === 'completed' && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   const handleDownload = (e) => {
     e.stopPropagation();
     if (image) {
       const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-      downloadImage(image, `pixel-prompt-${model.replace(/\s+/g, '-')}-${timestamp}.png`);
+      const safeModelName = model ? model.replace(/\s+/g, '-') : 'unknown';
+      downloadImage(image, `pixel-prompt-${safeModelName}-${timestamp}.png`);
     }
   };
 
@@ -112,11 +125,12 @@ function ImageCard({
     <div
       className={`${styles.card} ${status === 'completed' && image ? styles.clickable : ''}`}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       role={status === 'completed' ? 'button' : undefined}
       tabIndex={status === 'completed' ? 0 : undefined}
-      aria-label={status === 'completed' ? `View ${model} image` : undefined}
+      aria-label={status === 'completed' ? `View ${model || 'image'}` : undefined}
     >
       <div className={styles.imageContainer}>
         {renderContent()}

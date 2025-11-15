@@ -22,12 +22,15 @@ function useJobPolling(jobId, interval = DEFAULT_INTERVAL) {
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState(null);
 
-  const pollingIntervalRef = useRef(null);
+  const pollingTimeoutRef = useRef(null);
   const startTimeRef = useRef(null);
   const consecutiveErrorsRef = useRef(0);
-  const currentIntervalRef = useRef(interval);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    // Reset mounted flag
+    isMountedRef.current = true;
+
     // Reset state when jobId changes
     if (!jobId) {
       setJobStatus(null);
@@ -41,75 +44,79 @@ function useJobPolling(jobId, interval = DEFAULT_INTERVAL) {
     setError(null);
     startTimeRef.current = Date.now();
     consecutiveErrorsRef.current = 0;
-    currentIntervalRef.current = interval;
 
     const pollStatus = async () => {
+      // Skip if component unmounted or jobId changed
+      if (!isMountedRef.current) {
+        return;
+      }
+
       try {
         // Check for timeout (5 minutes)
         const elapsed = Date.now() - startTimeRef.current;
         if (elapsed > TIMEOUT_DURATION) {
           setError('Job polling timed out after 5 minutes');
           setIsPolling(false);
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
           return;
         }
 
         // Fetch job status
         const status = await getJobStatus(jobId);
+
+        // Check again if still mounted
+        if (!isMountedRef.current) {
+          return;
+        }
+
         setJobStatus(status);
 
         // Reset consecutive errors on success
         consecutiveErrorsRef.current = 0;
-        currentIntervalRef.current = interval;
 
         // Stop polling if job is complete, partial, or failed
         if (status.status === 'completed' || status.status === 'partial' || status.status === 'failed') {
           setIsPolling(false);
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
+          return;
         }
+
+        // Schedule next poll with default interval
+        pollingTimeoutRef.current = setTimeout(pollStatus, interval);
       } catch (err) {
         console.error('Error polling job status:', err);
+
+        // Skip if component unmounted
+        if (!isMountedRef.current) {
+          return;
+        }
 
         // Increment consecutive errors
         consecutiveErrorsRef.current += 1;
 
         // Exponential backoff for errors
         if (consecutiveErrorsRef.current <= MAX_CONSECUTIVE_ERRORS) {
-          currentIntervalRef.current = Math.min(
+          const backoffInterval = Math.min(
             interval * Math.pow(2, consecutiveErrorsRef.current - 1),
             8000 // Max 8 seconds
           );
 
-          // Clear old interval and set new one with backoff
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
-          pollingIntervalRef.current = setInterval(pollStatus, currentIntervalRef.current);
+          // Schedule next poll with backoff
+          pollingTimeoutRef.current = setTimeout(pollStatus, backoffInterval);
         } else {
           // Stop polling after max consecutive errors
           setError(`Failed to fetch job status after ${MAX_CONSECUTIVE_ERRORS} attempts`);
           setIsPolling(false);
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-          }
         }
       }
     };
 
-    // Initial poll
+    // Start polling
     pollStatus();
-
-    // Set up interval for subsequent polls
-    pollingIntervalRef.current = setInterval(pollStatus, interval);
 
     // Cleanup on unmount or when jobId changes
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
+      isMountedRef.current = false;
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
       }
       setIsPolling(false);
     };

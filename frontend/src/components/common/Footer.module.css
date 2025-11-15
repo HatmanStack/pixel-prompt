@@ -44,7 +44,7 @@
   gap: var(--spacing-xs);
 }
 
-kbd {
+.shortcut kbd {
   display: inline-block;
   padding: 2px 6px;
   font-family: var(--font-family-mono);

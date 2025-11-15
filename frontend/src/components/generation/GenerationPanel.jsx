@@ -33,7 +33,7 @@ function GenerationPanel() {
   const [modelNames, setModelNames] = useState([]);
 
   // Poll job status when we have a job ID
-  const { jobStatus, isPolling, error: pollingError } = useJobPolling(
+  const { jobStatus, error: pollingError } = useJobPolling(
     currentJob?.jobId,
     2000
   );
@@ -43,8 +43,8 @@ function GenerationPanel() {
     if (jobStatus) {
       setCurrentJob(jobStatus);
 
-      // Extract model names
-      if (jobStatus.results && modelNames.length === 0) {
+      // Extract model names (update on each job)
+      if (jobStatus.results) {
         const names = jobStatus.results.map(r => r.model || 'Unknown');
         setModelNames(names);
       }
@@ -199,7 +199,7 @@ function GenerationPanel() {
               <div
                 className={styles.progressFill}
                 style={{
-                  width: `${jobStatus ? (jobStatus.completedModels / jobStatus.totalModels) * 100 : 0}%`
+                  width: `${jobStatus?.results ? (jobStatus.results.filter(r => r.status === 'completed').length / jobStatus.results.length) * 100 : 0}%`
                 }}
               />
             </div>
