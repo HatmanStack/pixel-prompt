@@ -6,7 +6,9 @@ returning a standardized response format.
 """
 
 import base64
+import requests
 from typing import Dict, Any, Callable
+from openai import OpenAI
 
 
 def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
@@ -22,12 +24,46 @@ def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
         Standardized response dict with status and image data
     """
     try:
-        print(f"Calling OpenAI with model {model_config['name']}")
+        print(f"Calling OpenAI DALL-E 3 with prompt: {prompt[:50]}...")
 
-        # Placeholder response
+        # Initialize OpenAI client
+        client = OpenAI(api_key=model_config['key'])
+
+        # Call DALL-E 3 image generation
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1
+        )
+
+        # Extract image URL from response
+        image_url = response.data[0].url
+
+        # Download image
+        print(f"Downloading image from {image_url[:50]}...")
+        img_response = requests.get(image_url, timeout=30)
+        img_response.raise_for_status()
+
+        # Convert to base64
+        image_base64 = base64.b64encode(img_response.content).decode('utf-8')
+
+        print(f"OpenAI image generated successfully ({len(image_base64)} bytes)")
+
         return {
             'status': 'success',
-            'image': 'base64-placeholder-image-data',
+            'image': image_base64,
+            'model': model_config['name'],
+            'provider': 'openai'
+        }
+
+    except requests.Timeout:
+        error_msg = "Image download timeout after 30 seconds"
+        print(f"Error in handle_openai: {error_msg}")
+        return {
+            'status': 'error',
+            'error': error_msg,
             'model': model_config['name'],
             'provider': 'openai'
         }
