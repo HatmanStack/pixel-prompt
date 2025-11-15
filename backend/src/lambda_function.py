@@ -6,7 +6,49 @@ status checking, and prompt enhancement.
 
 import json
 import traceback
-from config import models, s3_bucket, cloudfront_domain
+from datetime import datetime, timezone
+import boto3
+import threading
+
+# Import configuration
+from config import (
+    models, s3_bucket, cloudfront_domain,
+    global_limit, ip_limit, ip_include
+)
+
+# Import modules
+from models.registry import ModelRegistry
+from jobs.manager import JobManager
+from jobs.executor import JobExecutor
+from utils.storage import ImageStorage
+from utils.rate_limit import RateLimiter
+from utils.content_filter import ContentFilter
+
+# Initialize components at module level (Lambda container reuse)
+print("Initializing Lambda components...")
+
+# S3 client
+s3_client = boto3.client('s3')
+
+# Model registry
+model_registry = ModelRegistry()
+
+# Job manager
+job_manager = JobManager(s3_client, s3_bucket)
+
+# Image storage
+image_storage = ImageStorage(s3_client, s3_bucket, cloudfront_domain)
+
+# Rate limiter
+rate_limiter = RateLimiter(s3_client, s3_bucket, global_limit, ip_limit, ip_include)
+
+# Content filter
+content_filter = ContentFilter()
+
+# Job executor
+job_executor = JobExecutor(job_manager, image_storage, model_registry)
+
+print(f"Lambda initialization complete: {model_registry.get_model_count()} models configured")
 
 
 def lambda_handler(event, context):
@@ -68,21 +110,69 @@ def handle_generate(event):
         steps = body.get('steps', 25)
         guidance = body.get('guidance', 7)
         control = body.get('control', 1.0)
-        ip = body.get('ip', 'unknown')
 
-        # Placeholder response
+        # Get client IP
+        ip = body.get('ip')
+        if not ip:
+            # Try to extract from event
+            ip = event.get('requestContext', {}).get('http', {}).get('sourceIp', 'unknown')
+
+        # Validate input
+        if not prompt or len(prompt) == 0:
+            return response(400, {'error': 'Prompt is required'})
+
+        if len(prompt) > 1000:
+            return response(400, {'error': 'Prompt too long (max 1000 characters)'})
+
+        # Check rate limit
+        is_limited = rate_limiter.check_rate_limit(ip)
+        if is_limited:
+            return response(429, {
+                'error': 'Rate limit exceeded',
+                'message': 'Too many requests. Please try again later.'
+            })
+
+        # Check content filter
+        is_blocked = content_filter.check_prompt(prompt)
+        if is_blocked:
+            return response(400, {
+                'error': 'Inappropriate content detected',
+                'message': 'Your prompt contains inappropriate content and cannot be processed.'
+            })
+
+        # Build parameters
+        params = {
+            'steps': steps,
+            'guidance': guidance,
+            'control': control
+        }
+
+        # Create target timestamp for grouping images
+        target = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H-%M-%S')
+
+        # Create job
+        job_id = job_manager.create_job(
+            prompt=prompt,
+            params=params,
+            models=model_registry.get_all_models()
+        )
+
+        # Start background execution in separate thread
+        # This allows Lambda to return immediately while processing continues
+        thread = threading.Thread(
+            target=job_executor.execute_job,
+            args=(job_id, prompt, params, target)
+        )
+        thread.daemon = True
+        thread.start()
+
+        print(f"Job {job_id} created and started in background")
+
+        # Return job ID immediately
         return response(200, {
-            'message': 'Generate endpoint (placeholder)',
-            'received': {
-                'prompt': prompt,
-                'steps': steps,
-                'guidance': guidance,
-                'control': control,
-                'ip': ip,
-                'models_configured': len(models)
-            },
-            's3_bucket': s3_bucket,
-            'cloudfront_domain': cloudfront_domain
+            'jobId': job_id,
+            'message': 'Job created successfully',
+            'totalModels': model_registry.get_model_count()
         })
 
     except json.JSONDecodeError:
@@ -107,15 +197,21 @@ def handle_status(event):
         path_parameters = event.get('pathParameters', {})
         job_id = path_parameters.get('jobId', 'unknown')
 
-        # Placeholder response
-        return response(200, {
-            'jobId': job_id,
-            'status': 'pending',
-            'message': 'Status endpoint (placeholder)',
-            'totalModels': len(models),
-            'completedModels': 0,
-            'results': []
-        })
+        # Get job status from S3
+        status = job_manager.get_job_status(job_id)
+
+        if not status:
+            return response(404, {
+                'error': 'Job not found',
+                'jobId': job_id
+            })
+
+        # Add CloudFront URLs to image results
+        for result in status.get('results', []):
+            if result.get('status') == 'completed' and result.get('imageKey'):
+                result['imageUrl'] = image_storage.get_cloudfront_url(result['imageKey'])
+
+        return response(200, status)
 
     except Exception as e:
         print(f"Error in handle_status: {str(e)}")
@@ -142,11 +238,12 @@ def handle_enhance(event):
         prompt = body.get('prompt', '')
 
         # Placeholder response
+        # Task 22 will implement the real enhancement logic
         return response(200, {
             'message': 'Enhance endpoint (placeholder)',
             'original': prompt,
             'enhanced': f'Enhanced version of: {prompt}',
-            'model_count': len(models)
+            'model_count': model_registry.get_model_count()
         })
 
     except json.JSONDecodeError:
