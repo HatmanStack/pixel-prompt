@@ -358,11 +358,52 @@ def handle_stability(model_config: Dict, prompt: str, params: Dict) -> Dict:
         Standardized response dict
     """
     try:
-        print(f"Calling Stability AI with model {model_config['name']}")
+        print(f"Calling Stability AI SD3 with prompt: {prompt[:50]}...")
+
+        # Stability AI API endpoint
+        url = "https://api.stability.ai/v2beta/stable-image/generate/sd3"
+
+        # Headers
+        headers = {
+            "authorization": f"Bearer {model_config['key']}",
+            "accept": "image/*"
+        }
+
+        # Build multipart form data
+        files = {
+            'prompt': (None, prompt),
+            'model': (None, 'sd3-large-turbo'),
+            'output_format': (None, 'png'),
+            'aspect_ratio': (None, '1:1')
+        }
+
+        # Add negative prompt if provided
+        negative_prompt = params.get('negative_prompt', '')
+        if negative_prompt:
+            files['negative_prompt'] = (None, negative_prompt)
+
+        # Make request
+        response = requests.post(url, headers=headers, files=files, timeout=60)
+        response.raise_for_status()
+
+        # Response is raw image bytes - convert to base64
+        image_base64 = base64.b64encode(response.content).decode('utf-8')
+
+        print(f"Stability AI image generated successfully ({len(image_base64)} bytes)")
 
         return {
             'status': 'success',
-            'image': 'base64-placeholder-image-data',
+            'image': image_base64,
+            'model': model_config['name'],
+            'provider': 'stability'
+        }
+
+    except requests.Timeout:
+        error_msg = "Stability AI request timeout after 60 seconds"
+        print(f"Error in handle_stability: {error_msg}")
+        return {
+            'status': 'error',
+            'error': error_msg,
             'model': model_config['name'],
             'provider': 'stability'
         }
@@ -389,15 +430,81 @@ def handle_bfl(model_config: Dict, prompt: str, params: Dict) -> Dict:
     Returns:
         Standardized response dict
     """
-    try:
-        print(f"Calling BFL with model {model_config['name']}")
+    import time
 
-        return {
-            'status': 'success',
-            'image': 'base64-placeholder-image-data',
-            'model': model_config['name'],
-            'provider': 'bfl'
+    try:
+        model_name_lower = model_config['name'].lower()
+
+        # Determine endpoint based on model name
+        if 'pro' in model_name_lower:
+            endpoint = "flux-pro-1.1"
+        else:
+            endpoint = "flux-dev"
+
+        print(f"Calling BFL {endpoint} with prompt: {prompt[:50]}...")
+
+        # Start job
+        start_url = f"https://api.bfl.ai/v1/{endpoint}"
+        headers = {
+            "x-key": model_config['key'],
+            "Content-Type": "application/json"
         }
+        payload = {
+            "prompt": prompt,
+            "width": 1024,
+            "height": 1024
+        }
+
+        response = requests.post(start_url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        job_data = response.json()
+        job_id = job_data.get('id')
+
+        if not job_id:
+            raise ValueError("No job ID returned from BFL API")
+
+        print(f"BFL job started: {job_id}, polling for result...")
+
+        # Poll for result (max 2 minutes)
+        result_url = f"https://api.bfl.ai/v1/get_result?id={job_id}"
+        max_attempts = 40  # 2 minutes / 3 seconds per attempt
+        attempt = 0
+
+        while attempt < max_attempts:
+            time.sleep(3)
+            attempt += 1
+
+            result_response = requests.get(result_url, headers=headers, timeout=10)
+            result_response.raise_for_status()
+            result_data = result_response.json()
+
+            status = result_data.get('status')
+            print(f"BFL job status: {status} (attempt {attempt}/{max_attempts})")
+
+            if status == 'Ready':
+                # Download image from result URL
+                image_url = result_data['result']['sample']
+                img_response = requests.get(image_url, timeout=30)
+                img_response.raise_for_status()
+
+                # Convert to base64
+                image_base64 = base64.b64encode(img_response.content).decode('utf-8')
+
+                print(f"BFL image generated successfully ({len(image_base64)} bytes)")
+
+                return {
+                    'status': 'success',
+                    'image': image_base64,
+                    'model': model_config['name'],
+                    'provider': 'bfl'
+                }
+
+            elif status == 'Error':
+                error_msg = result_data.get('error', 'Unknown error')
+                raise ValueError(f"BFL job failed: {error_msg}")
+
+        # Timeout
+        raise TimeoutError(f"BFL job timeout after {max_attempts * 3} seconds")
 
     except Exception as e:
         print(f"Error in handle_bfl: {str(e)}")
@@ -422,11 +529,38 @@ def handle_recraft(model_config: Dict, prompt: str, params: Dict) -> Dict:
         Standardized response dict
     """
     try:
-        print(f"Calling Recraft with model {model_config['name']}")
+        print(f"Calling Recraft v3 with prompt: {prompt[:50]}...")
+
+        # Recraft uses OpenAI-compatible API with custom base URL
+        client = OpenAI(
+            api_key=model_config['key'],
+            base_url="https://external.api.recraft.ai/v1"
+        )
+
+        # Call image generation (OpenAI-compatible)
+        response = client.images.generate(
+            model="recraftv3",
+            prompt=prompt,
+            size="1024x1024",
+            n=1
+        )
+
+        # Extract image URL
+        image_url = response.data[0].url
+
+        # Download image
+        print(f"Downloading Recraft image from {image_url[:50]}...")
+        img_response = requests.get(image_url, timeout=30)
+        img_response.raise_for_status()
+
+        # Convert to base64
+        image_base64 = base64.b64encode(img_response.content).decode('utf-8')
+
+        print(f"Recraft image generated successfully ({len(image_base64)} bytes)")
 
         return {
             'status': 'success',
-            'image': 'base64-placeholder-image-data',
+            'image': image_base64,
             'model': model_config['name'],
             'provider': 'recraft'
         }
@@ -456,20 +590,45 @@ def handle_generic(model_config: Dict, prompt: str, params: Dict) -> Dict:
         Standardized response dict
     """
     try:
-        print(f"Calling generic handler with model {model_config['name']}")
+        print(f"Calling generic OpenAI-compatible handler for {model_config['name']}")
+        print(f"Attempting with prompt: {prompt[:50]}...")
+
+        # Try as OpenAI-compatible API
+        # Use the model name as-is
+        client = OpenAI(api_key=model_config['key'])
+
+        response = client.images.generate(
+            model=model_config['name'],
+            prompt=prompt,
+            size="1024x1024",
+            n=1
+        )
+
+        # Extract image URL
+        image_url = response.data[0].url
+
+        # Download image
+        img_response = requests.get(image_url, timeout=30)
+        img_response.raise_for_status()
+
+        # Convert to base64
+        image_base64 = base64.b64encode(img_response.content).decode('utf-8')
+
+        print(f"Generic handler succeeded ({len(image_base64)} bytes)")
 
         return {
             'status': 'success',
-            'image': 'base64-placeholder-image-data',
+            'image': image_base64,
             'model': model_config['name'],
             'provider': 'generic'
         }
 
     except Exception as e:
-        print(f"Error in handle_generic: {str(e)}")
+        error_msg = f"Generic handler failed (model may not be OpenAI-compatible): {str(e)}"
+        print(f"Error in handle_generic: {error_msg}")
         return {
             'status': 'error',
-            'error': str(e),
+            'error': error_msg,
             'model': model_config['name'],
             'provider': 'generic'
         }
