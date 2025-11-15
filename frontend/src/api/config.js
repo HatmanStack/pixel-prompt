@@ -28,6 +28,8 @@ export const API_ROUTES = {
   GENERATE: '/generate',
   STATUS: '/status',
   ENHANCE: '/enhance',
+  GALLERY_LIST: '/gallery/list',
+  GALLERY_DETAIL: '/gallery',
 };
 
 // Request timeout in milliseconds
