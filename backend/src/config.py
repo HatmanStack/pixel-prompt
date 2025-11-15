@@ -37,12 +37,16 @@ for i in range(1, model_count + 1):
             'key': key
         })
 
-# Validation
+# Validation - fail fast on misconfiguration
 if len(models) != model_count:
-    print(f"Warning: MODEL_COUNT is {model_count} but only {len(models)} models are configured")
+    error_msg = f"MODEL_COUNT is {model_count} but only {len(models)} models are configured"
+    print(f"ERROR: {error_msg}")
+    raise ValueError(error_msg)
 
 if prompt_model_index < 1 or prompt_model_index > len(models):
-    print(f"Warning: PROMPT_MODEL_INDEX {prompt_model_index} is out of range (1-{len(models)})")
+    error_msg = f"PROMPT_MODEL_INDEX {prompt_model_index} is out of range (1-{len(models)})"
+    print(f"ERROR: {error_msg}")
+    raise ValueError(error_msg)
 
 # Permanent negative prompt for Stable Diffusion models
 perm_negative_prompt = "ugly, blurry, low quality, distorted"
