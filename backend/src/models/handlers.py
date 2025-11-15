@@ -269,6 +269,10 @@ def handle_bedrock_nova(model_config: Dict, prompt: str, params: Dict) -> Dict:
         # Parse response
         response_body = json.loads(response['body'].read())
 
+        # Validate response structure
+        if 'images' not in response_body or len(response_body['images']) == 0:
+            raise ValueError("Bedrock Nova returned empty images array")
+
         # Extract base64 image from response
         image_base64 = response_body['images'][0]
 
@@ -334,6 +338,10 @@ def handle_bedrock_sd(model_config: Dict, prompt: str, params: Dict) -> Dict:
 
         # Parse response
         response_body = json.loads(response['body'].read())
+
+        # Validate response structure
+        if 'images' not in response_body or len(response_body['images']) == 0:
+            raise ValueError("Bedrock SD returned empty images array")
 
         # Extract base64 image from response
         image_base64 = response_body['images'][0]
