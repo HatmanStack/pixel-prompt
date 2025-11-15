@@ -46,13 +46,24 @@ Prepare API keys for desired AI models:
 
 ## Phase Summary
 
-| Phase | Goal | Est. Tokens | Prerequisites |
-|-------|------|-------------|---------------|
-| [Phase 0](Phase-0.md) | Architecture & Design Decisions | N/A | Read entire plan |
-| [Phase 1](Phase-1.md) | Complete Backend Implementation | ~100,000 | AWS CLI configured |
-| [Phase 2](Phase-2.md) | Complete Frontend Implementation & Testing | ~100,000 | Phase 1 complete |
+| Phase | Goal | Sections | Est. Tokens | Prerequisites |
+|-------|------|----------|-------------|---------------|
+| [Phase 0](Phase-0.md) | Architecture & Design Decisions | N/A | N/A | Read entire plan |
+| [Phase 1](Phase-1.md) | Complete Backend Implementation | 3 sections (23 tasks) | ~100,000 | AWS CLI configured |
+| [Phase 2](Phase-2.md) | Complete Frontend Implementation & Testing | 4 sections | ~100,000 | Phase 1 complete |
 
-**Total Estimated Tokens**: ~200,000
+**Total Estimated Tokens**: ~200,000 across 2 implementation phases
+
+### Phase 1 Sections:
+- **Section 1**: Infrastructure Foundation (Tasks 1-8)
+- **Section 2**: Model Registry & Intelligent Routing (Tasks 9-15)
+- **Section 3**: Async Job Management & Parallel Processing (Tasks 16-23)
+
+### Phase 2 Sections:
+- **Section 1**: Frontend Foundation - Vite React Setup
+- **Section 2**: Core Image Generation UI
+- **Section 3**: Gallery & Advanced Features
+- **Section 4**: Integration Testing & Documentation
 
 ## Implementation Approach
 

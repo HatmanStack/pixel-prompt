@@ -373,7 +373,7 @@ const AppContext = {
 - **Framework**: React 18.x (functional components, hooks)
 - **Language**: JavaScript (ES6+, no TypeScript to reduce complexity)
 - **HTTP Client**: `fetch` API (native browser, no axios needed)
-- **Styling**: CSS Modules or styled-components (decide in Phase 4)
+- **Styling**: CSS Modules or styled-components (decide in Phase 2, Section 1)
 - **Dependencies**:
   - `react`, `react-dom`
   - `react-router-dom`: Client-side routing (if needed)
@@ -586,4 +586,4 @@ VITE_API_ENDPOINT=https://xxx.execute-api.us-west-2.amazonaws.com  # API Gateway
 
 ## Next Steps
 
-Read through all phases (1-7) to understand the full implementation path, then begin with **[Phase 1: Backend Infrastructure & SAM Template](Phase-1.md)**.
+Read through all phases (1-2) to understand the full implementation path, then begin with **[Phase 1: Complete Backend Implementation](Phase-1.md)**.

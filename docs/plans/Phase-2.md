@@ -6,9 +6,9 @@ This phase combines all frontend work: Vite React foundation, core image generat
 
 ---
 
-# Phase 4: Frontend Foundation - Vite React Setup
+## Section 1: Frontend Foundation - Vite React Setup
 
-## Phase Goal
+### Section Goal
 
 Create the foundational Vite React application with project structure, API client, routing, state management, and core UI components. This phase establishes the development environment and basic architecture for the frontend.
 
@@ -25,18 +25,18 @@ Create the foundational Vite React application with project structure, API clien
 
 ---
 
-## Prerequisites
+### Prerequisites
 
 - Node.js 18+ installed
 - npm or yarn package manager
-- Backend deployed from Phases 1-3
+- Backend deployed from Phase 1
 - API Gateway endpoint URL from backend deployment
 - Basic understanding of React hooks and components
 - Familiarity with Vite build tool
 
 ---
 
-## Tasks
+### Tasks
 
 ### Task 1: Vite Project Initialization
 
@@ -631,7 +631,7 @@ feat(frontend): set up React Context for state management
 
 ### Complete Phase Checklist
 
-Before moving to Phase 5, verify:
+Before moving to Section 2, verify:
 
 - [ ] Vite dev server runs successfully (`npm run dev`)
 - [ ] Production build works (`npm run build`)
@@ -664,19 +664,16 @@ npm run preview
 
 ### Known Limitations
 
-- No UI components built yet (Phase 5)
-- No gallery functionality yet (Phase 6)
-- No sound effects or animations yet (Phase 6)
+- No UI components built yet (Section 2)
+- No gallery functionality yet (Section 3)
+- No sound effects or animations yet (Section 3)
 - Placeholder content only
 
 ---
 
-## Next Phase
+## Section 2: Core Image Generation UI
 
-Proceed to **[Phase 5: Frontend - Core Image Generation UI](Phase-5.md)** to build the main image generation interface.
-# Phase 5: Frontend - Core Image Generation UI
-
-## Phase Goal
+### Section Goal
 
 Build the core user interface for image generation including prompt input, parameter controls, generation button, image grid display, and real-time status updates. This phase creates the primary user workflow: enter prompt → adjust parameters → generate → view results.
 
@@ -694,16 +691,16 @@ Build the core user interface for image generation including prompt input, param
 
 ---
 
-## Prerequisites
+### Prerequisites
 
-- Phase 4 complete (Vite app running, API client ready)
+- Section 1 complete (Vite app running, API client ready)
 - Backend deployed and accessible
 - Understanding of React hooks and state management
 - Reference to pixel-prompt-js components for UX patterns
 
 ---
 
-## Tasks
+### Tasks
 
 ### Task 1: Prompt Input Component
 
@@ -713,7 +710,7 @@ Build the core user interface for image generation including prompt input, param
 - `/frontend/src/components/generation/PromptInput.jsx`
 - `/frontend/src/components/generation/PromptInput.module.css`
 
-**Prerequisites**: Phase 4 complete
+**Prerequisites**: Section 1 complete
 
 **Implementation Steps**:
 
@@ -1344,7 +1341,7 @@ feat(frontend): polish generation UI with animations and accessibility
 
 ### Complete Phase Checklist
 
-Before moving to Phase 6, verify:
+Before moving to Section 3, verify:
 
 - [ ] Prompt input works with character count and clear button
 - [ ] Parameter sliders adjust steps and guidance
@@ -1404,19 +1401,16 @@ Before moving to Phase 6, verify:
 
 ### Known Limitations
 
-- No gallery feature yet (Phase 6)
-- No sound effects yet (Phase 6)
-- No advanced animations (breathing background) yet (Phase 6)
+- No gallery feature yet (Section 3)
+- No sound effects yet (Section 3)
+- No advanced animations (breathing background) yet (Section 3)
 - Limited customization options
 
 ---
 
-## Next Phase
+## Section 3: Gallery & Advanced Features
 
-Proceed to **[Phase 6: Frontend - Gallery & Advanced Features](Phase-6.md)** to add gallery browsing, sound effects, and advanced UI features.
-# Phase 6: Frontend - Gallery & Advanced Features
-
-## Phase Goal
+### Section Goal
 
 Implement the gallery feature for browsing historical generations, add sound effects for user interactions, create the breathing background animation, and add final polish features to match the full feature parity of pixel-prompt-js.
 
@@ -1433,15 +1427,15 @@ Implement the gallery feature for browsing historical generations, add sound eff
 
 ---
 
-## Prerequisites
+### Prerequisites
 
-- Phase 5 complete (core generation UI working)
+- Section 2 complete (core generation UI working)
 - Sound files copied to frontend/assets/sounds/
 - Reference components from pixel-prompt-js
 
 ---
 
-## Tasks
+### Tasks
 
 ### Task 1: Gallery Module - S3 Listing
 
@@ -1451,7 +1445,7 @@ Implement the gallery feature for browsing historical generations, add sound eff
 - `/frontend/src/hooks/useGallery.js` - Gallery data hook
 - `/frontend/src/utils/s3Helpers.js` - S3 listing utilities
 
-**Prerequisites**: Phase 5 complete
+**Prerequisites**: Section 2 complete
 
 **Implementation Steps**:
 
@@ -2124,7 +2118,7 @@ feat(frontend): final polish and optimization
 
 ### Complete Phase Checklist
 
-Before moving to Phase 7, verify:
+Before moving to Section 4, verify:
 
 - [ ] Gallery browser displays past generations
 - [ ] Can select and load galleries
@@ -2177,12 +2171,9 @@ Bundle size targets:
 
 ---
 
-## Next Phase
+## Section 4: Integration Testing & Documentation
 
-Proceed to **[Phase 7: Integration Testing & Documentation](Phase-7.md)** for final testing and documentation.
-# Phase 7: Integration Testing & Documentation
-
-## Phase Goal
+### Section Goal
 
 Conduct comprehensive end-to-end testing of the entire system, fix all critical bugs, create production-ready documentation, and prepare for deployment. This phase ensures the pixel-prompt-complete distribution is stable, well-documented, and ready for use.
 
@@ -2199,16 +2190,16 @@ Conduct comprehensive end-to-end testing of the entire system, fix all critical 
 
 ---
 
-## Prerequisites
+### Prerequisites
 
-- All previous phases complete (1-6)
+- All previous sections complete
 - Backend deployed to AWS
 - Frontend built and testable
 - Access to testing environments
 
 ---
 
-## Tasks
+### Tasks
 
 ### Task 1: End-to-End Integration Tests
 
@@ -2899,7 +2890,7 @@ Before considering the project complete, verify:
 
 ## Project Completion
 
-Once all tasks in Phase 7 are complete and all verification criteria met:
+Once all tasks in Section 4 are complete and all verification criteria met:
 
 **Celebrate!** You've successfully built pixel-prompt-complete, a fully serverless text-to-image generation platform with:
 - Dynamic model registry supporting multiple AI providers
