@@ -472,7 +472,9 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock-runtime:InvokeModel
-              Resource: '*'
+              Resource:
+                - arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-canvas-v1:0
+                - arn:aws:bedrock:us-west-2::foundation-model/stability.sd3-5-large-v1:0
       Events:
         GenerateApi:
           Type: HttpApi
