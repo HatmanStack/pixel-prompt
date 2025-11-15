@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { downloadImage } from '../../utils/imageHelpers';
 import styles from './ImageCard.module.css';
 
 function ImageCard({
@@ -14,6 +15,7 @@ function ImageCard({
   onExpand
 }) {
   const [imageError, setImageError] = useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   const handleImageError = () => {
     setImageError(true);
@@ -22,6 +24,27 @@ function ImageCard({
   const handleClick = () => {
     if (status === 'completed' && image && !imageError && onExpand) {
       onExpand();
+    }
+  };
+
+  const handleDownload = (e) => {
+    e.stopPropagation();
+    if (image) {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+      downloadImage(image, `pixel-prompt-${model.replace(/\s+/g, '-')}-${timestamp}.png`);
+    }
+  };
+
+  const handleCopyUrl = async (e) => {
+    e.stopPropagation();
+    if (image) {
+      try {
+        await navigator.clipboard.writeText(image);
+        alert('Image URL copied to clipboard!');
+      } catch (error) {
+        console.error('Failed to copy URL:', error);
+        alert('Failed to copy URL');
+      }
     }
   };
 
@@ -50,13 +73,35 @@ function ImageCard({
 
     if (status === 'completed' && image) {
       return (
-        <img
-          src={image}
-          alt={`Generated image from ${model}`}
-          className={styles.image}
-          onError={handleImageError}
-          loading="lazy"
-        />
+        <>
+          <img
+            src={image}
+            alt={`Generated image from ${model}`}
+            className={styles.image}
+            onError={handleImageError}
+            loading="lazy"
+          />
+          {showActions && (
+            <div className={styles.actions}>
+              <button
+                className={styles.actionButton}
+                onClick={handleDownload}
+                aria-label="Download image"
+                title="Download"
+              >
+                ⬇
+              </button>
+              <button
+                className={styles.actionButton}
+                onClick={handleCopyUrl}
+                aria-label="Copy image URL"
+                title="Copy URL"
+              >
+                🔗
+              </button>
+            </div>
+          )}
+        </>
       );
     }
 
@@ -67,6 +112,8 @@ function ImageCard({
     <div
       className={`${styles.card} ${status === 'completed' && image ? styles.clickable : ''}`}
       onClick={handleClick}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
       role={status === 'completed' ? 'button' : undefined}
       tabIndex={status === 'completed' ? 0 : undefined}
       aria-label={status === 'completed' ? `View ${model} image` : undefined}
