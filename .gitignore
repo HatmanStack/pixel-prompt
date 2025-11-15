@@ -36,5 +36,3 @@ samconfig.toml
 .DS_Store
 
 # Local testing
-*.log
-.env.local
