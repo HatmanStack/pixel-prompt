@@ -460,8 +460,118 @@ Resources:
           GLOBAL_LIMIT: !Ref GlobalRateLimit
           IP_LIMIT: !Ref IPRateLimit
           IP_INCLUDE: !Ref IPWhitelist
+          # S3 and CloudFront (will be set after resources are created)
+          S3_BUCKET: !Ref PixelPromptBucket
+          CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref PixelPromptBucket
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock-runtime:InvokeModel
+              Resource: '*'
+
+  # S3 Bucket for image storage and job status
+  PixelPromptBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'pixel-prompt-complete-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Disabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - '*'
+            AllowedMethods:
+              - GET
+              - HEAD
+            AllowedHeaders:
+              - '*'
+            MaxAge: 3600
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldImages
+            Status: Enabled
+            ExpirationInDays: 30
+            Prefix: group-images/
+    DeletionPolicy: Retain
+
+  # CloudFront Origin Access Identity
+  CloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${AWS::StackName}'
+
+  # S3 Bucket Policy to allow CloudFront access
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PixelPromptBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontOAI
+            Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOAI.S3CanonicalUserId
+            Action: s3:GetObject
+            Resource: !Sub '${PixelPromptBucket.Arn}/*'
+
+  # CloudFront Distribution for fast image delivery
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'CloudFront distribution for ${AWS::StackName}'
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt PixelPromptBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          Compress: true
+          DefaultTTL: 86400
+          MaxTTL: 31536000
+        PriceClass: PriceClass_100
 
 Outputs:
   FunctionName:
     Description: Lambda Function Name
     Value: !Ref PixelPromptFunction
+
+  ApiEndpoint:
+    Description: API Gateway endpoint URL (will be added in next task)
+    Value: "TBD"
+
+  CloudFrontDomain:
+    Description: CloudFront distribution domain
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
+  S3BucketName:
+    Description: S3 bucket name
+    Value: !Ref PixelPromptBucket
