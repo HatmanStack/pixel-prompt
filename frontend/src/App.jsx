@@ -5,6 +5,7 @@
 
 import Header from './components/common/Header';
 import Container from './components/common/Container';
+import Footer from './components/common/Footer';
 import GenerationPanel from './components/generation/GenerationPanel';
 import styles from './App.module.css';
 
@@ -17,6 +18,7 @@ function App() {
           <GenerationPanel />
         </Container>
       </main>
+      <Footer />
     </div>
   );
 }
