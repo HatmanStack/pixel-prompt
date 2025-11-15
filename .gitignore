@@ -3,5 +3,3 @@ package.json
 yarn.lock
 .env
 .vscode/
-# Planning documents
-docs/plans/
