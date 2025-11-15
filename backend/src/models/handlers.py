@@ -6,9 +6,12 @@ returning a standardized response format.
 """
 
 import base64
+import json
+import os
 import requests
 from typing import Dict, Any, Callable
 from openai import OpenAI
+import boto3
 
 
 def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
@@ -155,11 +158,47 @@ def handle_bedrock_nova(model_config: Dict, prompt: str, params: Dict) -> Dict:
         Standardized response dict
     """
     try:
-        print(f"Calling AWS Bedrock Nova with model {model_config['name']}")
+        print(f"Calling AWS Bedrock Nova Canvas with prompt: {prompt[:50]}...")
+
+        # Create boto3 session with credentials
+        # Note: AWS credentials should be in environment or Lambda execution role
+        bedrock = boto3.client(
+            service_name='bedrock-runtime',
+            region_name='us-east-1'  # Nova Canvas requires us-east-1
+        )
+
+        # Build request body for Nova Canvas
+        request_body = {
+            "taskType": "TEXT_IMAGE",
+            "textToImageParams": {
+                "text": prompt
+            },
+            "imageGenerationConfig": {
+                "numberOfImages": 1,
+                "height": 1024,
+                "width": 1024,
+                "cfgScale": params.get('guidance', 8.0),
+                "seed": 0
+            }
+        }
+
+        # Invoke model
+        response = bedrock.invoke_model(
+            modelId='amazon.nova-canvas-v1:0',
+            body=json.dumps(request_body)
+        )
+
+        # Parse response
+        response_body = json.loads(response['body'].read())
+
+        # Extract base64 image from response
+        image_base64 = response_body['images'][0]
+
+        print(f"Bedrock Nova image generated successfully ({len(image_base64)} bytes)")
 
         return {
             'status': 'success',
-            'image': 'base64-placeholder-image-data',
+            'image': image_base64,
             'model': model_config['name'],
             'provider': 'bedrock_nova'
         }
@@ -187,11 +226,45 @@ def handle_bedrock_sd(model_config: Dict, prompt: str, params: Dict) -> Dict:
         Standardized response dict
     """
     try:
-        print(f"Calling AWS Bedrock SD with model {model_config['name']}")
+        print(f"Calling AWS Bedrock SD 3.5 Large with prompt: {prompt[:50]}...")
+
+        # Create boto3 client
+        bedrock = boto3.client(
+            service_name='bedrock-runtime',
+            region_name='us-west-2'  # Stable Diffusion requires us-west-2
+        )
+
+        # Build request body for Stable Diffusion
+        request_body = {
+            "prompt": prompt,
+            "mode": "text-to-image",
+            "aspect_ratio": "1:1",
+            "output_format": "png",
+            "seed": 0
+        }
+
+        # Add negative prompt if provided
+        negative_prompt = params.get('negative_prompt', '')
+        if negative_prompt:
+            request_body['negative_prompt'] = negative_prompt
+
+        # Invoke model
+        response = bedrock.invoke_model(
+            modelId='stability.sd3-5-large-v1:0',
+            body=json.dumps(request_body)
+        )
+
+        # Parse response
+        response_body = json.loads(response['body'].read())
+
+        # Extract base64 image from response
+        image_base64 = response_body['images'][0]
+
+        print(f"Bedrock SD image generated successfully ({len(image_base64)} bytes)")
 
         return {
             'status': 'success',
-            'image': 'base64-placeholder-image-data',
+            'image': image_base64,
             'model': model_config['name'],
             'provider': 'bedrock_sd'
         }
