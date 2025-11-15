@@ -23,6 +23,7 @@ from jobs.executor import JobExecutor
 from utils.storage import ImageStorage
 from utils.rate_limit import RateLimiter
 from utils.content_filter import ContentFilter
+from api.enhance import PromptEnhancer
 
 # Initialize components at module level (Lambda container reuse)
 print("Initializing Lambda components...")
@@ -47,6 +48,9 @@ content_filter = ContentFilter()
 
 # Job executor
 job_executor = JobExecutor(job_manager, image_storage, model_registry)
+
+# Prompt enhancer
+prompt_enhancer = PromptEnhancer(model_registry)
 
 print(f"Lambda initialization complete: {model_registry.get_model_count()} models configured")
 
@@ -237,13 +241,19 @@ def handle_enhance(event):
         body = json.loads(event.get('body', '{}'))
         prompt = body.get('prompt', '')
 
-        # Placeholder response
-        # Task 22 will implement the real enhancement logic
+        # Validate input
+        if not prompt or len(prompt) == 0:
+            return response(400, {'error': 'Prompt is required'})
+
+        if len(prompt) > 500:
+            return response(400, {'error': 'Prompt too long for enhancement (max 500 characters)'})
+
+        # Enhance prompt
+        enhanced = prompt_enhancer.enhance_safe(prompt)
+
         return response(200, {
-            'message': 'Enhance endpoint (placeholder)',
             'original': prompt,
-            'enhanced': f'Enhanced version of: {prompt}',
-            'model_count': model_registry.get_model_count()
+            'enhanced': enhanced
         })
 
     except json.JSONDecodeError:
