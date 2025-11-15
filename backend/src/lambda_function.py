@@ -256,6 +256,14 @@ def handle_enhance(event):
         if len(prompt) > 500:
             return response(400, {'error': 'Prompt too long for enhancement (max 500 characters)'})
 
+        # Check content filter
+        is_blocked = content_filter.check_prompt(prompt)
+        if is_blocked:
+            return response(400, {
+                'error': 'Inappropriate content detected',
+                'message': 'Your prompt contains inappropriate content and cannot be processed.'
+            })
+
         # Enhance prompt
         enhanced = prompt_enhancer.enhance_safe(prompt)
 
