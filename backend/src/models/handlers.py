@@ -18,14 +18,14 @@ from google import genai
 from google.genai import types
 
 
-def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
+def handle_openai(model_config: Dict, prompt: str, _params: Dict) -> Dict:
     """
     Handle image generation for OpenAI (DALL-E 3).
 
     Args:
         model_config: Model configuration dict with 'name' and 'key'
         prompt: Text prompt for image generation
-        params: Generation parameters (steps, guidance, etc.)
+        _params: Generation parameters (unused - DALL-E 3 has fixed settings)
 
     Returns:
         Standardized response dict with status and image data
@@ -89,14 +89,14 @@ def handle_openai(model_config: Dict, prompt: str, params: Dict) -> Dict:
         }
 
 
-def handle_google_gemini(model_config: Dict, prompt: str, params: Dict) -> Dict:
+def handle_google_gemini(model_config: Dict, prompt: str, _params: Dict) -> Dict:
     """
     Handle image generation for Google Gemini 2.0.
 
     Args:
         model_config: Model configuration dict with 'name' and 'key'
         prompt: Text prompt for image generation
-        params: Generation parameters
+        _params: Generation parameters (unused - Gemini uses default settings)
 
     Returns:
         Standardized response dict
@@ -152,14 +152,14 @@ def handle_google_gemini(model_config: Dict, prompt: str, params: Dict) -> Dict:
         }
 
 
-def handle_google_imagen(model_config: Dict, prompt: str, params: Dict) -> Dict:
+def handle_google_imagen(model_config: Dict, prompt: str, _params: Dict) -> Dict:
     """
     Handle image generation for Google Imagen 3.0.
 
     Args:
         model_config: Model configuration dict
         prompt: Text prompt for image generation
-        params: Generation parameters
+        _params: Generation parameters (unused - Imagen uses default settings)
 
     Returns:
         Standardized response dict
@@ -423,14 +423,14 @@ def handle_stability(model_config: Dict, prompt: str, params: Dict) -> Dict:
         }
 
 
-def handle_bfl(model_config: Dict, prompt: str, params: Dict) -> Dict:
+def handle_bfl(model_config: Dict, prompt: str, _params: Dict) -> Dict:
     """
     Handle image generation for Black Forest Labs (Flux).
 
     Args:
         model_config: Model configuration dict
         prompt: Text prompt for image generation
-        params: Generation parameters
+        _params: Generation parameters (unused - Flux uses model defaults)
 
     Returns:
         Standardized response dict
@@ -519,14 +519,14 @@ def handle_bfl(model_config: Dict, prompt: str, params: Dict) -> Dict:
         }
 
 
-def handle_recraft(model_config: Dict, prompt: str, params: Dict) -> Dict:
+def handle_recraft(model_config: Dict, prompt: str, _params: Dict) -> Dict:
     """
     Handle image generation for Recraft.
 
     Args:
         model_config: Model configuration dict
         prompt: Text prompt for image generation
-        params: Generation parameters
+        _params: Generation parameters (unused - Recraft uses default settings)
 
     Returns:
         Standardized response dict
@@ -578,7 +578,7 @@ def handle_recraft(model_config: Dict, prompt: str, params: Dict) -> Dict:
         }
 
 
-def handle_generic(model_config: Dict, prompt: str, params: Dict) -> Dict:
+def handle_generic(model_config: Dict, prompt: str, _params: Dict) -> Dict:
     """
     Generic fallback handler for unknown providers.
 
@@ -587,7 +587,7 @@ def handle_generic(model_config: Dict, prompt: str, params: Dict) -> Dict:
     Args:
         model_config: Model configuration dict
         prompt: Text prompt for image generation
-        params: Generation parameters
+        _params: Generation parameters (unused - generic handler uses defaults)
 
     Returns:
         Standardized response dict
