@@ -102,6 +102,89 @@ All the models are SOTA and some are available on HuggingFace.
 
 - **meta-llama/llama-4-maverick-17b-128e-instruct**
 
+## Quick Deployment
+
+Deploy the entire application to AWS in minutes with the automated deployment script.
+
+### Prerequisites
+
+- [AWS CLI](https://aws.amazon.com/cli/) installed and configured (`aws configure`)
+- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) installed
+- Node.js 18+ and npm
+- Python 3.12+
+- AI provider API keys (OpenAI, Google, etc.)
+
+### Deploy Backend (One Command)
+
+```bash
+# Deploy to development environment
+./scripts/deploy.sh dev
+
+# Deploy to staging environment
+./scripts/deploy.sh staging
+
+# Deploy to production environment
+./scripts/deploy.sh prod
+```
+
+The deployment script will:
+1. Build the Lambda function
+2. Deploy CloudFormation stack to AWS
+3. Create S3 bucket and CloudFront distribution
+4. Extract API Gateway endpoint
+5. Automatically generate `frontend/.env` with correct API endpoint
+
+### Deploy Frontend
+
+```bash
+# Build frontend
+cd frontend
+npm install
+npm run build
+
+# Preview locally
+npm run preview
+
+# Deploy to your hosting platform
+# (Netlify, Vercel, S3 + CloudFront, etc.)
+```
+
+### Configuration
+
+The deployment script uses environment-specific settings from `backend/samconfig.toml`:
+
+- **dev**: 3 models, lower rate limits, development testing
+- **staging**: 9 models, production-like configuration, pre-production testing
+- **prod**: 9 models, higher rate limits, production deployment
+
+API keys are passed as parameters during the first deployment (`sam deploy --guided`) or via parameter overrides.
+
+### Required AWS Permissions
+
+Your AWS account needs permissions to create:
+- Lambda functions
+- API Gateway HTTP APIs
+- S3 buckets
+- CloudFront distributions
+- IAM roles
+- CloudFormation stacks
+- CloudWatch log groups
+
+### Troubleshooting
+
+**Deployment fails with "credentials not configured":**
+- Run `aws configure` and enter your AWS access key ID and secret access key
+
+**Frontend can't connect to API:**
+- Verify `frontend/.env` has the correct API endpoint
+- Check that the backend CloudFormation stack deployed successfully: `aws cloudformation describe-stacks --stack-name pixel-prompt-{environment}`
+
+**CloudFront images not loading:**
+- CloudFront distribution takes ~15 minutes to fully deploy
+- Check distribution status: `aws cloudfront list-distributions`
+
+For more detailed deployment documentation, see `PRODUCTION_CHECKLIST.md`.
+
 ## Functionality
 
 This App was creating using the HuggingFace Inference API.  Although Free to use, some functionality isn't available yet.  The Style and Layout switches are based on the IP adapter which isn't supported by the Inference API. If you decide to use custom endpoints this is available now.

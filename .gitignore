@@ -26,7 +26,7 @@ dist/
 
 # SAM
 .aws-sam/
-samconfig.toml
+# samconfig.toml is now committed (contains config, not secrets)
 
 # IDE
 .vscode/
