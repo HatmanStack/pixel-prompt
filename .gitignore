@@ -36,3 +36,4 @@ samconfig.toml
 .DS_Store
 
 # Local testing
+coverage/
