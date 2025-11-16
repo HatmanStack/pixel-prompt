@@ -124,20 +124,42 @@ function GenerationPanel() {
   // Listen for keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't trigger shortcuts when typing in inputs
+      const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+
       // Ctrl+Enter to generate
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isTyping) {
         if (!isGenerating && prompt.trim()) {
           handleGenerate();
         }
       }
+
       // Ctrl+R for random prompt
-      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !isTyping) {
         e.preventDefault(); // Prevent browser reload
         if (!isGenerating) {
           // Trigger via event for RandomPromptButton to handle
           const event = new CustomEvent('random-prompt-trigger');
           document.dispatchEvent(event);
         }
+      }
+
+      // Ctrl+E for enhance prompt
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e' && !isTyping) {
+        e.preventDefault();
+        if (!isGenerating && prompt.trim()) {
+          // Trigger via event for PromptEnhancer to handle
+          const event = new CustomEvent('enhance-prompt-trigger');
+          document.dispatchEvent(event);
+        }
+      }
+
+      // Ctrl+Shift+D for download all images
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D' && !isTyping) {
+        e.preventDefault();
+        // Trigger via event for ImageGrid to handle
+        const event = new CustomEvent('download-all-trigger');
+        document.dispatchEvent(event);
       }
     };
 

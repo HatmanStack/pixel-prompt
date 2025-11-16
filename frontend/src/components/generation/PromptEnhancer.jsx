@@ -1,9 +1,10 @@
 /**
  * PromptEnhancer Component
  * UI for prompt enhancement feature
+ * Supports Ctrl+E keyboard shortcut
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { enhancePrompt } from '../../api/client';
 import styles from './PromptEnhancer.module.css';
 
@@ -12,6 +13,20 @@ function PromptEnhancer({ currentPrompt = '', onUsePrompt, disabled = false }) {
   const [enhancedPrompt, setEnhancedPrompt] = useState(null);
   const [error, setError] = useState(null);
   const [showLong, setShowLong] = useState(false);
+
+  // Listen for keyboard shortcut (Ctrl+E)
+  useEffect(() => {
+    const handleEnhancePromptTrigger = () => {
+      if (!disabled && !isEnhancing && currentPrompt.trim()) {
+        handleEnhance();
+      }
+    };
+
+    document.addEventListener('enhance-prompt-trigger', handleEnhancePromptTrigger);
+    return () => {
+      document.removeEventListener('enhance-prompt-trigger', handleEnhancePromptTrigger);
+    };
+  }, [disabled, isEnhancing, currentPrompt]);
 
   const handleEnhance = async () => {
     if (!currentPrompt.trim()) {

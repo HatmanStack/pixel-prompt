@@ -4,9 +4,10 @@
  * Optimized with useCallback to prevent breaking ImageCard memoization
  * Includes ImageModal for full-screen viewing with keyboard navigation
  * Includes batch download for all completed images
+ * Supports Ctrl+Shift+D keyboard shortcut for download all
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { downloadImage } from '../../utils/imageHelpers';
 import ImageCard from './ImageCard';
@@ -96,6 +97,18 @@ function ImageGrid({ images, modelNames = [] }) {
       errorToast(`Failed to download images`);
     }
   }, [completedImages, isDownloading, success, errorToast, info]);
+
+  // Listen for keyboard shortcut (Ctrl+Shift+D)
+  useEffect(() => {
+    const handleDownloadAllTrigger = () => {
+      handleDownloadAll();
+    };
+
+    document.addEventListener('download-all-trigger', handleDownloadAllTrigger);
+    return () => {
+      document.removeEventListener('download-all-trigger', handleDownloadAllTrigger);
+    };
+  }, [handleDownloadAll]);
 
   return (
     <>
