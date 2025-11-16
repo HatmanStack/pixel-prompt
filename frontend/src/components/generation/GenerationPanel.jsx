@@ -8,6 +8,7 @@ import { useApp } from '../../context/AppContext';
 import useJobPolling from '../../hooks/useJobPolling';
 import { generateImages } from '../../api/client';
 import PromptInput from './PromptInput';
+import RandomPromptButton from '../features/generation/RandomPromptButton';
 import PromptEnhancer from './PromptEnhancer';
 import ParameterSliders from './ParameterSliders';
 import GenerateButton from './GenerateButton';
@@ -119,17 +120,29 @@ function GenerationPanel() {
     }
   };
 
-  // Listen for Ctrl+Enter keyboard shortcut
+  // Listen for keyboard shortcuts
   useEffect(() => {
-    const handleGenerateTrigger = () => {
-      if (!isGenerating && prompt.trim()) {
-        handleGenerate();
+    const handleKeyDown = (e) => {
+      // Ctrl+Enter to generate
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (!isGenerating && prompt.trim()) {
+          handleGenerate();
+        }
+      }
+      // Ctrl+R for random prompt
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault(); // Prevent browser reload
+        if (!isGenerating) {
+          // Trigger via event for RandomPromptButton to handle
+          const event = new CustomEvent('random-prompt-trigger');
+          document.dispatchEvent(event);
+        }
       }
     };
 
-    document.addEventListener('generate-trigger', handleGenerateTrigger);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('generate-trigger', handleGenerateTrigger);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [prompt, isGenerating, parameters]);
 
@@ -157,11 +170,17 @@ function GenerationPanel() {
           disabled={isGenerating}
         />
 
-        <PromptEnhancer
-          currentPrompt={prompt}
-          onUsePrompt={setPrompt}
-          disabled={isGenerating}
-        />
+        <div className={styles.promptActions}>
+          <RandomPromptButton
+            onSelectPrompt={setPrompt}
+            disabled={isGenerating}
+          />
+          <PromptEnhancer
+            currentPrompt={prompt}
+            onUsePrompt={setPrompt}
+            disabled={isGenerating}
+          />
+        </div>
 
         <ParameterSliders
           steps={parameters.steps}
