@@ -3,7 +3,7 @@
  * Tests the complete user workflow from entering a prompt to viewing results
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import GenerationPanel from '../../components/generation/GenerationPanel';
@@ -56,8 +56,8 @@ describe('Generate Images Flow - Integration', () => {
     const stepsSlider = screen.getByLabelText(/sampling steps/i);
     const guidanceSlider = screen.getByLabelText(/guidance scale/i);
 
-    await user.clear(stepsSlider);
-    await user.type(stepsSlider, '30');
+    // For range inputs, use fireEvent to change the value
+    fireEvent.change(stepsSlider, { target: { value: '30' } });
 
     // Step 3: User clicks generate button
     const generateButton = screen.getByRole('button', { name: /generate images/i });
