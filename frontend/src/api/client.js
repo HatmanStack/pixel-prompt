@@ -114,5 +114,26 @@ export async function enhancePrompt(prompt) {
   });
 }
 
+/**
+ * List all galleries
+ * @returns {Promise<Object>} Gallery list with previews
+ */
+export async function listGalleries() {
+  return apiFetch(API_ROUTES.GALLERY_LIST, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Get gallery details and all images
+ * @param {string} galleryId - The gallery ID (timestamp folder name)
+ * @returns {Promise<Object>} Gallery details with all images
+ */
+export async function getGallery(galleryId) {
+  return apiFetch(`${API_ROUTES.GALLERY_DETAIL}/${galleryId}`, {
+    method: 'GET',
+  });
+}
+
 // Export configuration for testing
 export { API_BASE_URL, API_ROUTES };

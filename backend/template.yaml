@@ -494,6 +494,18 @@ Resources:
             Path: /enhance
             Method: POST
             ApiId: !Ref HttpApi
+        GalleryListApi:
+          Type: HttpApi
+          Properties:
+            Path: /gallery/list
+            Method: GET
+            ApiId: !Ref HttpApi
+        GalleryDetailApi:
+          Type: HttpApi
+          Properties:
+            Path: /gallery/{galleryId}
+            Method: GET
+            ApiId: !Ref HttpApi
 
   # HTTP API Gateway
   HttpApi:

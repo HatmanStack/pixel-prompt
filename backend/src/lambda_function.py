@@ -83,6 +83,10 @@ def lambda_handler(event, context):
             return handle_status(event)
         elif path == '/enhance' and method == 'POST':
             return handle_enhance(event)
+        elif path == '/gallery/list' and method == 'GET':
+            return handle_gallery_list(event)
+        elif path.startswith('/gallery/') and method == 'GET':
+            return handle_gallery_detail(event)
         else:
             return response(404, {'error': 'Not found', 'path': path, 'method': method})
 
@@ -276,6 +280,123 @@ def handle_enhance(event):
         return response(400, {'error': 'Invalid JSON in request body'})
     except Exception as e:
         print(f"Error in handle_enhance: {str(e)}")
+        traceback.print_exc()
+        return response(500, {'error': 'Internal server error'})
+
+
+def handle_gallery_list(event):
+    """
+    GET /gallery/list - List all galleries with preview images.
+
+    Returns:
+        {
+            "galleries": [
+                {
+                    "id": "2025-11-15-14-30-45",
+                    "timestamp": "2025-11-15T14:30:45Z",
+                    "preview": "https://cloudfront.../preview.json"
+                }
+            ]
+        }
+    """
+    try:
+        # Get list of gallery folders
+        gallery_folders = image_storage.list_galleries()
+
+        # Build response with preview images
+        galleries = []
+        for folder in gallery_folders:
+            # Get first image from each gallery as preview
+            images = image_storage.list_gallery_images(folder)
+
+            preview_url = None
+            if images:
+                # Use first image as preview
+                preview_key = images[0]
+                preview_url = image_storage.get_cloudfront_url(preview_key)
+
+            # Parse timestamp from folder name (format: YYYY-MM-DD-HH-MM-SS)
+            try:
+                timestamp_str = f"{folder[:10]}T{folder[11:13]}:{folder[14:16]}:{folder[17:19]}Z"
+            except (IndexError, ValueError):
+                timestamp_str = folder
+
+            galleries.append({
+                'id': folder,
+                'timestamp': timestamp_str,
+                'preview': preview_url,
+                'imageCount': len(images)
+            })
+
+        print(f"Returning {len(galleries)} galleries")
+
+        return response(200, {
+            'galleries': galleries,
+            'total': len(galleries)
+        })
+
+    except Exception as e:
+        print(f"Error in handle_gallery_list: {str(e)}")
+        traceback.print_exc()
+        return response(500, {'error': 'Internal server error'})
+
+
+def handle_gallery_detail(event):
+    """
+    GET /gallery/{galleryId} - Get all images from a specific gallery.
+
+    Returns:
+        {
+            "galleryId": "2025-11-15-14-30-45",
+            "images": [
+                {
+                    "key": "group-images/...",
+                    "url": "https://cloudfront.../...",
+                    "model": "DALL-E 3",
+                    "prompt": "...",
+                    "timestamp": "..."
+                }
+            ]
+        }
+    """
+    try:
+        # Extract gallery ID from path
+        path = event.get('rawPath', event.get('path', ''))
+        gallery_id = path.split('/')[-1]
+
+        if not gallery_id or gallery_id == 'list':
+            return response(400, {'error': 'Gallery ID is required'})
+
+        # Get all images from gallery
+        image_keys = image_storage.list_gallery_images(gallery_id)
+
+        # Fetch metadata for each image
+        images = []
+        for key in image_keys:
+            metadata = image_storage.get_image(key)
+            if metadata:
+                images.append({
+                    'key': key,
+                    'url': image_storage.get_cloudfront_url(key),
+                    'model': metadata.get('model', 'Unknown'),
+                    'prompt': metadata.get('prompt', ''),
+                    'steps': metadata.get('steps'),
+                    'guidance': metadata.get('guidance'),
+                    'control': metadata.get('control'),
+                    'timestamp': metadata.get('timestamp'),
+                    'output': metadata.get('output')  # Include base64 image data
+                })
+
+        print(f"Returning {len(images)} images from gallery {gallery_id}")
+
+        return response(200, {
+            'galleryId': gallery_id,
+            'images': images,
+            'total': len(images)
+        })
+
+    except Exception as e:
+        print(f"Error in handle_gallery_detail: {str(e)}")
         traceback.print_exc()
         return response(500, {'error': 'Internal server error'})
 

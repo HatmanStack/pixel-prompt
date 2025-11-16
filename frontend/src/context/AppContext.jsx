@@ -4,6 +4,7 @@
  */
 
 import { createContext, useContext, useState } from 'react';
+import useSound from '../hooks/useSound';
 
 // Create context
 const AppContext = createContext(null);
@@ -32,6 +33,9 @@ export function AppProvider({ children }) {
 
   // UI state
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Sound effects
+  const { playSound, isMuted, toggleMute, setVolume, soundsLoaded } = useSound();
 
   // Helper functions
   const updateJobStatus = (jobStatus) => {
@@ -85,6 +89,13 @@ export function AppProvider({ children }) {
     // UI state
     isGenerating,
     setIsGenerating,
+
+    // Sound effects
+    playSound,
+    isMuted,
+    toggleMute,
+    setVolume,
+    soundsLoaded,
 
     // Helper functions
     resetGeneration,
