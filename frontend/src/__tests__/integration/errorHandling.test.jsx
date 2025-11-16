@@ -11,7 +11,6 @@ import { AppProvider } from '../../context/AppContext';
 import { ToastProvider } from '../../context/ToastContext';
 import * as apiClient from '../../api/client';
 import {
-  mockErrorResponse,
   mockNetworkError,
   mockTimeoutError,
   mockGenerateResponse

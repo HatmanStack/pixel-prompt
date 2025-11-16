@@ -6,7 +6,7 @@ Accepts frontend error logs and writes them to CloudWatch with structured format
 
 import json
 from typing import Dict, Optional
-from src.utils.logger import StructuredLogger
+from utils.logger import StructuredLogger
 
 
 # Valid log levels

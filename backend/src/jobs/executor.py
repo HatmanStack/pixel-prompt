@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict
-from src.models.handlers import get_handler
+from models.handlers import get_handler
 
 
 class JobExecutor:
@@ -46,8 +46,8 @@ class JobExecutor:
 
         print(f"Starting job {job_id} with {len(models)} models in parallel")
 
-        # Create thread pool with one worker per model
-        with ThreadPoolExecutor(max_workers=len(models)) as executor:
+        # Create thread pool with one worker per model, capped at 10 to prevent resource exhaustion
+        with ThreadPoolExecutor(max_workers=min(len(models), 10)) as executor:
             # Submit all tasks
             futures = {
                 executor.submit(

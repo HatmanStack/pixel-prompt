@@ -329,6 +329,7 @@ def handle_gallery_list(event, correlation_id=None):
     try:
         # Get list of gallery folders
         gallery_folders = image_storage.list_galleries()
+        StructuredLogger.info(f"Listing {len(gallery_folders)} galleries", correlation_id=correlation_id)
 
         # Build response with preview images
         galleries = []
@@ -442,6 +443,7 @@ def handle_gallery_detail(event, correlation_id=None):
         # Extract gallery ID from path
         path = event.get('rawPath', event.get('path', ''))
         gallery_id = path.split('/')[-1]
+        StructuredLogger.info(f"Fetching gallery: {gallery_id}", correlation_id=correlation_id)
 
         if not gallery_id or gallery_id == 'list':
             return response(400, {'error': 'Gallery ID is required'})

@@ -11,11 +11,7 @@ from typing import Dict, List, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-# Import retry with try/except for test environment compatibility
-try:
-    from utils.retry import retry_with_backoff
-except ImportError:
-    from src.utils.retry import retry_with_backoff
+from .retry import retry_with_backoff
 
 
 class ImageStorage:

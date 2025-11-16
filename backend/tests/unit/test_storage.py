@@ -27,7 +27,13 @@ class TestImageStorage:
             'guidance': 5.0
         }
 
-        key = storage.upload_image(image_data, '2025-11-16-10-30-00', 'TestModel', metadata)
+        key = storage.save_image(
+            base64_image=image_data,
+            model_name='TestModel',
+            prompt=metadata['prompt'],
+            params={'steps': metadata['steps'], 'guidance': metadata['guidance']},
+            target='2025-11-16-10-30-00'
+        )
 
         # Verify key format
         assert key is not None
