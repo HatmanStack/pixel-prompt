@@ -35,10 +35,17 @@ This enhancement transforms the application from a well-architected proof-of-con
 - Artillery or k6 for load testing (installed as needed)
 
 ### Knowledge Requirements
-- Familiarity with React 18+ and hooks
-- Understanding of AWS serverless architecture (Lambda, API Gateway, S3)
-- Experience with Infrastructure as Code (CloudFormation/SAM)
-- Git workflow and conventional commits
+
+**This plan assumes:**
+- **Technical Knowledge**: Familiarity with React 18+, AWS serverless, Python 3.12+, testing frameworks
+- **Codebase Knowledge**: Zero - implementer will explore the Pixel Prompt codebase as part of each phase's discovery tasks
+- **Existing Codebase**: The Pixel Prompt application already exists with working frontend and backend (not building from scratch)
+
+**Implementer Profile:**
+- Skilled developer with React and AWS experience
+- Unfamiliar with this specific codebase structure
+- Will follow exploration tasks to discover existing components, endpoints, and patterns
+- Will not deviate from the plan without documenting findings
 
 ## Phase Summary
 
@@ -53,6 +60,8 @@ This enhancement transforms the application from a well-architected proof-of-con
 
 **Total Estimated Tokens:** ~520,000
 **Total Estimated Duration:** 2-3 weeks
+
+**Note on Phase Ordering:** Phase 3 (Production Deployment) intentionally comes before Phase 4 (Performance Optimization). This is because Phase 3 establishes performance baselines (Lambda cold starts, Lighthouse scores, bundle sizes) by deploying to staging and running benchmarks. Phase 4 then uses these baselines to measure optimization improvements. This ensures we have concrete before/after metrics for all performance work.
 
 ## Implementation Guidelines
 

@@ -27,6 +27,122 @@ Establish comprehensive automated test coverage across frontend and backend, ach
 
 ## Tasks
 
+### Task 0: Codebase Discovery - Frontend and Backend Structure
+
+**Goal:** Explore the existing Pixel Prompt codebase to discover all frontend components, backend endpoints, existing tests, and file structure. Document findings to inform all subsequent tasks in this phase.
+
+**Files to Modify/Create:**
+- `docs/CODEBASE_DISCOVERY.md` - Document all findings
+- Update `docs/plans/Phase-0.md` "File Structure - Current Codebase" section with detailed findings
+
+**Prerequisites:**
+- None (first task in all phases)
+
+**Implementation Steps:**
+
+1. **Discover Frontend Components**
+   - Use Glob to find all React components:
+     ```bash
+     # Find all JSX/JS component files
+     find frontend/src -name "*.jsx" -o -name "*.js" | grep -v test | grep -v node_modules
+
+     # Or with Glob tool:
+     glob "frontend/src/**/*.jsx"
+     ```
+   - List all components by category (features/common/layout)
+   - Identify component file organization pattern
+   - Document component naming conventions
+
+2. **Discover Frontend Structure Details**
+   - Find hooks: `glob "frontend/src/hooks/**/*.js"`
+   - Find contexts: `glob "frontend/src/context/**/*.js"`
+   - Find utilities: `glob "frontend/src/utils/**/*.js"`
+   - Find API client: `glob "frontend/src/api/**/*.js"`
+   - Check for existing tests: `glob "frontend/src/**/*.test.{js,jsx}"`
+
+3. **Discover Backend Endpoints**
+   - Read `backend/src/lambda_function.py` to identify all route handlers
+   - Use Grep to find route definitions:
+     ```bash
+     grep -n "def.*handler\|route\|@app\|if.*path" backend/src/lambda_function.py
+     ```
+   - List all endpoints: /generate, /status, /enhance, /gallery/*, etc.
+   - Document request/response patterns
+
+4. **Discover Backend Structure**
+   - Find model handlers: `glob "backend/src/models/**/*.py"`
+   - Find utilities: `glob "backend/src/utils/**/*.py"`
+   - Find existing tests: `glob "backend/tests/**/*.py"`
+   - Identify which model providers are implemented
+   - Use Grep to find handler functions:
+     ```bash
+     grep -n "def.*handler\|class.*Handler" backend/src/models/handlers.py
+     ```
+
+5. **Discover Existing Tests**
+   - Frontend: count existing test files (if any)
+   - Backend: read `backend/tests/integration/test_api_endpoints.py`
+   - Document test coverage gaps
+   - Identify testing patterns already in use
+
+6. **Document Findings**
+   - Create `docs/CODEBASE_DISCOVERY.md` with structured findings:
+     - Frontend components list (grouped by type)
+     - Backend endpoints list
+     - Existing tests summary
+     - Key files and their purposes
+     - Naming conventions observed
+     - Patterns to follow
+   - Update Phase-0.md with accurate current structure
+
+7. **Verify Critical Components Exist**
+   - Confirm these components exist (mentioned in later tasks):
+     - PromptInput (or similar prompt entry component)
+     - ImageCard/ImageGrid (or similar image display)
+     - GenerationPanel (or similar main generation UI)
+     - GalleryBrowser (or similar gallery view)
+   - If names differ, document actual names to use in later tasks
+
+**Verification Checklist:**
+- [ ] CODEBASE_DISCOVERY.md created with all findings
+- [ ] Frontend components cataloged (minimum 10+ components found)
+- [ ] Backend endpoints cataloged (minimum 5 endpoints)
+- [ ] Existing tests documented
+- [ ] Component naming conventions identified
+- [ ] Critical components for testing located (or noted as missing)
+- [ ] Phase-0.md updated with actual current structure
+
+**Testing Instructions:**
+```bash
+# Discover frontend structure
+cd frontend
+find src -name "*.jsx" -type f | head -20
+
+# Discover backend structure
+cd ../backend
+grep -n "path ==" src/lambda_function.py
+
+# Check for existing tests
+find . -name "*test*.py" -o -name "*test*.js"
+
+# Document all findings in CODEBASE_DISCOVERY.md
+```
+
+**Commit Message Template:**
+```
+docs: add codebase discovery documentation
+
+- Catalog all frontend components (X components found)
+- Catalog all backend endpoints (Y endpoints found)
+- Document existing test coverage
+- Identify naming conventions and patterns
+- Update Phase-0 with accurate current structure
+```
+
+**Estimated Tokens:** ~5,000
+
+---
+
 ### Task 1: Configure Vitest for Frontend Testing
 
 **Goal:** Set up Vitest testing framework with React Testing Library, configure test environment, and verify basic test execution.
@@ -106,57 +222,68 @@ test(frontend): configure Vitest and React Testing Library
 
 ### Task 2: Frontend Component Tests - Core Components
 
-**Goal:** Write comprehensive component tests for core UI components (PromptInput, ParameterSliders, ImageCard, GenerateButton) covering rendering, user interactions, and prop variations.
+**Goal:** Write comprehensive component tests for core UI components covering rendering, user interactions, and prop variations. Use actual component names discovered in Task 0.
 
 **Files to Modify/Create:**
-- `frontend/src/__tests__/components/PromptInput.test.jsx`
-- `frontend/src/__tests__/components/ParameterSliders.test.jsx`
-- `frontend/src/__tests__/components/ImageCard.test.jsx`
-- `frontend/src/__tests__/components/GenerateButton.test.jsx`
+- Test files for components found in Task 0 discovery (examples below assume common names, adjust based on actual findings):
+  - `frontend/src/__tests__/components/{PromptInputComponent}.test.jsx`
+  - `frontend/src/__tests__/components/{ParameterSlidersComponent}.test.jsx`
+  - `frontend/src/__tests__/components/{ImageCardComponent}.test.jsx`
+  - `frontend/src/__tests__/components/{GenerateButtonComponent}.test.jsx`
 
 **Prerequisites:**
+- Task 0 complete (codebase discovered, components located)
 - Task 1 complete (Vitest configured)
 
 **Implementation Steps:**
 
-1. **Identify Test Scenarios for Each Component**
+1. **Review Discovery Documentation**
+   - Read `CODEBASE_DISCOVERY.md` from Task 0
+   - Identify which core components exist for testing
+   - Note actual component names (may differ from examples: PromptInput, ParameterSliders, ImageCard, GenerateButton)
+   - If expected components don't exist, document in verification notes
+
+2. **Identify Test Scenarios for Each Component**
    - Read component source code to understand props, state, and behavior
    - List user interactions (clicks, typing, slider changes)
    - Identify edge cases (empty inputs, loading states, errors)
    - Plan accessibility tests (ARIA roles, keyboard navigation)
 
-2. **Write PromptInput Tests**
+3. **Write Tests for Prompt Input Component**
+   - (Example expectations - adjust based on actual component behavior)
    - Renders with placeholder text
    - Updates value on user typing
-   - Shows character counter (e.g., "150/500")
+   - Shows character counter if implemented
    - Calls onChange callback with new value
    - Handles empty input gracefully
    - Tests maxLength enforcement if applicable
 
-3. **Write ParameterSliders Tests**
-   - Renders three sliders (steps, guidance, control) with correct labels
+4. **Write Tests for Parameter Controls Component**
+   - (May be sliders, inputs, or other controls - check discovery docs)
+   - Renders parameter controls (steps, guidance, control) with correct labels
    - Default values displayed correctly
-   - onChange fires when slider moved
-   - Min/max values enforced (steps: 1-100, guidance: 0-20, control: 0-2)
+   - onChange fires when values changed
+   - Min/max values enforced based on discovered constraints
    - Value labels update in real-time
 
-4. **Write ImageCard Tests**
+5. **Write Tests for Image Display Component**
+   - (May be called ImageCard, ImageTile, or similar - check discovery)
    - Renders loading state (skeleton or spinner)
    - Displays image when URL provided
-   - Shows model name and generation time
-   - Download button triggers download action
+   - Shows model name and generation metadata
+   - Download button triggers download action if present
    - Error state displayed when image fails to load
    - Handles missing optional props gracefully
 
-5. **Write GenerateButton Tests**
-   - Renders with correct label ("Generate Images")
-   - Disabled when prompt is empty
+6. **Write Tests for Generate/Submit Button Component**
+   - Renders with correct label (check actual label in code)
+   - Disabled when prompt is invalid or empty
    - Disabled when loading state active
    - Calls onClick handler when clicked
    - Shows loading indicator during generation
    - Accessible via keyboard (Enter key)
 
-6. **Follow Testing Best Practices**
+7. **Follow Testing Best Practices**
    - Use `screen.getByRole()` for accessibility-focused queries
    - Use `userEvent` for realistic user interactions (not `fireEvent`)
    - Test behavior, not implementation details (avoid testing state directly)
@@ -164,18 +291,23 @@ test(frontend): configure Vitest and React Testing Library
 
 **Verification Checklist:**
 - [ ] All component tests pass (`npm test`)
-- [ ] Each component has 4+ test cases
+- [ ] Each discovered core component has 4+ test cases
 - [ ] Tests cover happy path, edge cases, and error states
 - [ ] No warnings about improper cleanup or async issues
 - [ ] Coverage report shows 60%+ coverage for tested components
+- [ ] If expected components missing, documented in verification notes with explanation
 
 **Testing Instructions:**
-Run tests for each component file:
+Run tests for each component file (use actual component names from Task 0):
 ```bash
-npm test PromptInput
-npm test ParameterSliders
-npm test ImageCard
-npm test GenerateButton
+# Example - adjust component names based on discovery
+npm test {ActualPromptComponentName}
+npm test {ActualParameterComponentName}
+npm test {ActualImageComponentName}
+npm test {ActualButtonComponentName}
+
+# Or run all tests
+npm test
 ```
 
 All tests should pass. Check coverage with `npm run test:coverage`.
@@ -184,10 +316,12 @@ All tests should pass. Check coverage with `npm run test:coverage`.
 ```
 test(frontend): add component tests for core UI elements
 
-- PromptInput: text input, character counter, validation
-- ParameterSliders: slider interactions, value updates
-- ImageCard: loading/error states, image display
-- GenerateButton: disabled states, click handling
+- {ActualComponent1Name}: text input, character counter, validation
+- {ActualComponent2Name}: parameter controls, value updates
+- {ActualComponent3Name}: loading/error states, image display
+- {ActualComponent4Name}: disabled states, click handling
+
+[List actual components tested based on discovery findings]
 ```
 
 **Estimated Tokens:** ~15,000

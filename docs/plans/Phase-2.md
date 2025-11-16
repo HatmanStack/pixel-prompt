@@ -612,13 +612,14 @@ feat: improve user-facing error messages
    - Verify user-friendly error messages
    - Test retry logic (simulate S3 error)
 
-6. **Test in Staging Environment**
-   - Deploy to staging with error handling enabled
+6. **Test in Dev/Local Environment**
+   - Deploy to dev environment (or use existing dev deployment) with error handling enabled
    - Manually trigger each error type
-   - Verify error messages display correctly
-   - Verify CloudWatch logs contain correlation IDs
-   - Verify S3 retries work (simulate transient error)
+   - Verify error messages display correctly in frontend
+   - Verify CloudWatch logs contain correlation IDs (check AWS console for dev stack)
+   - Verify S3 retries work (simulate transient error if possible)
    - Verify rate limiting enforced
+   - **Note:** Full staging verification will be done in Phase 3 after staging environment is set up
 
 **Verification Checklist:**
 - [ ] ERROR_HANDLING.md documents architecture clearly
@@ -626,18 +627,21 @@ feat: improve user-facing error messages
 - [ ] CloudWatch Insights queries work as documented
 - [ ] Integration tests cover all error scenarios
 - [ ] PRODUCTION_CHECKLIST.md updated with verification steps
-- [ ] Staging tests confirm error handling works end-to-end
+- [ ] Dev environment tests confirm error handling works (staging verification in Phase 3)
 
 **Testing Instructions:**
 ```bash
 # Run error scenario tests
 pytest tests/integration/test_error_scenarios.py -v
 
-# Manual staging verification
-# 1. Deploy to staging
-# 2. Follow PRODUCTION_CHECKLIST.md error handling section
+# Manual dev environment verification
+# 1. Deploy to dev (or use existing dev deployment)
+# 2. Test error boundaries (manually trigger error in component)
 # 3. Verify all error types work as expected
-# 4. Check CloudWatch Logs for structured entries
+# 4. Check CloudWatch Logs for dev stack for structured entries
+
+# NOTE: Comprehensive staging verification occurs in Phase 3
+# after staging environment is deployed
 ```
 
 **Commit Message Template:**

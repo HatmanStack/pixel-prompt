@@ -71,7 +71,27 @@ Create streamlined deployment automation for backend infrastructure, implement s
      - `ApiEndpoint` - API Gateway URL
      - `S3BucketName` - Generated images bucket
      - `CloudFrontDomain` - CDN distribution URL
-   - Use `jq` or `awk` to extract values from JSON output
+   - Extract values using jq (preferred) or awk (fallback):
+     ```bash
+     # Check if jq is available
+     if command -v jq &> /dev/null; then
+       # Use jq (preferred - more reliable JSON parsing)
+       API_ENDPOINT=$(sam list stack-outputs --stack-name $STACK_NAME --output json | \
+         jq -r '.[] | select(.OutputKey=="ApiEndpoint") | .OutputValue')
+       S3_BUCKET=$(sam list stack-outputs --stack-name $STACK_NAME --output json | \
+         jq -r '.[] | select(.OutputKey=="S3BucketName") | .OutputValue')
+       CLOUDFRONT_DOMAIN=$(sam list stack-outputs --stack-name $STACK_NAME --output json | \
+         jq -r '.[] | select(.OutputKey=="CloudFrontDomain") | .OutputValue')
+     else
+       # Fallback to awk (works without jq)
+       API_ENDPOINT=$(sam list stack-outputs --stack-name $STACK_NAME | \
+         grep "ApiEndpoint" | awk '{print $2}')
+       S3_BUCKET=$(sam list stack-outputs --stack-name $STACK_NAME | \
+         grep "S3BucketName" | awk '{print $2}')
+       CLOUDFRONT_DOMAIN=$(sam list stack-outputs --stack-name $STACK_NAME | \
+         grep "CloudFrontDomain" | awk '{print $2}')
+     fi
+     ```
 
 5. **Generate Frontend .env File**
    - Write `frontend/.env` with extracted values

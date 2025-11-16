@@ -569,6 +569,57 @@ def log_structured(level, message, correlation_id=None, **kwargs):
 
 ---
 
+## File Structure - Current Codebase
+
+**NOTE:** This section will be updated during Phase 1, Task 0 (Codebase Discovery). Below is a high-level overview based on initial exploration:
+
+```
+pixel-prompt/
+├── frontend/
+│   ├── src/
+│   │   ├── api/             # API client & integration
+│   │   ├── components/      # React components (organized by feature)
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── context/         # Global state (AppContext)
+│   │   ├── utils/           # Helper functions
+│   │   ├── styles/          # CSS modules
+│   │   └── assets/          # Images, fonts, sounds
+│   ├── public/              # Static assets
+│   ├── vite.config.js       # Build configuration
+│   ├── eslint.config.js     # Linting rules
+│   └── package.json
+├── backend/
+│   ├── src/
+│   │   ├── lambda_function.py    # Main Lambda handler
+│   │   ├── config.py             # Environment configuration
+│   │   ├── models/
+│   │   │   ├── registry.py       # Dynamic model registry
+│   │   │   └── handlers.py       # Provider handlers
+│   │   ├── jobs/
+│   │   │   ├── manager.py        # Job lifecycle management
+│   │   │   └── executor.py       # Parallel job execution
+│   │   ├── api/
+│   │   │   └── enhance.py        # Prompt enhancement
+│   │   └── utils/
+│   │       ├── storage.py        # S3 operations
+│   │       ├── rate_limit.py     # Rate limiting
+│   │       └── content_filter.py # NSFW detection
+│   ├── tests/
+│   │   └── integration/
+│   │       └── test_api_endpoints.py
+│   ├── template.yaml         # AWS SAM CloudFormation template
+│   └── requirements.txt
+├── docs/
+│   └── plans/                # This directory
+├── README.md
+├── SECURITY.md
+└── PRODUCTION_CHECKLIST.md
+```
+
+**Discovery Task Required:** Each phase includes Task 0 to discover specific components, endpoints, and patterns relevant to that phase's work. This ensures implementer understands current structure before making changes.
+
+---
+
 ## File Structure After Implementation
 
 ```
