@@ -857,3 +857,142 @@ After completing all tasks:
 - [ ] Zero test flakiness (consistent results)
 
 This phase establishes a strong testing foundation that enables confident development in all subsequent phases.
+
+---
+
+## Review Feedback (Iteration 1)
+
+### Task 1: Vitest Configuration ✓ COMPLETED
+
+**Excellent work!** Verified with tools:
+- ✓ `Read vite.config.js`: Test config present with globals, jsdom, coverage
+- ✓ `Read package.json`: All test scripts configured correctly
+- ✓ `Read setupTests.js`: jest-dom imported, cleanup configured
+- ✓ `Bash npm test`: All 122 tests passing
+
+**Critical Dependency Issue Found:**
+
+> **Consider:** When running `npm install`, the installation fails with a peer dependency error. Looking at `package.json` line 17, the project uses `"react": "^19.2.0"`, but `@testing-library/react@15.0.0` has a peer dependency on React 18. Have you verified that the tests actually work without using `--legacy-peer-deps`?
+>
+> **Reflect:** The plan at Phase-0.md line 268 specifies "React 18+" as the framework. Does the current codebase use React 19? If so, should you update `@testing-library/react` to a version compatible with React 19, or downgrade React to 18?
+>
+> **Think about:** Future contributors will run `npm install` and encounter this error. What would make the setup experience smoother? (Hint: Either update the dependency versions to be compatible, or document the `--legacy-peer-deps` requirement in the README.)
+
+### Tasks 2 & 3: Component Tests ✓ EXCELLENT
+
+**Outstanding test coverage!** Verified with tools:
+- ✓ `Glob frontend/src/__tests__/components/*.jsx`: Found 8 component test files
+- ✓ `Bash npm test`: 122 tests passing across 9 files
+- ✓ `Bash npm run test:coverage`: 97% coverage for tested generation components, 97% for gallery components
+- ✓ `Read PromptInput.test.jsx`: High-quality tests using userEvent, accessibility queries, edge cases
+
+The tests follow best practices: userEvent for interactions, accessibility-focused queries, comprehensive edge case coverage. Well done!
+
+### Task 4: Integration Tests ✗ MISSING
+
+> **Consider:** Looking at the success criteria on line 10, the plan requires "5+ frontend integration tests for user flows." When running `Glob "frontend/src/__tests__/integration/*.jsx"`, what result did you get?
+>
+> **Reflect:** The plan at lines 418-505 specifies creating integration tests for: generateFlow, galleryFlow, enhanceFlow, and errorHandling. Where are these files located in your implementation?
+>
+> **Think about:** Integration tests verify that multiple components work together. The current tests only test individual components in isolation. How will you verify that the complete user flow—from entering a prompt, clicking generate, polling for status, and displaying results—actually works end-to-end?
+
+**Action Required:**
+- Create `frontend/src/__tests__/integration/` directory
+- Implement the 4 integration test files specified in Task 4
+- Each test should render the full App or major component trees
+- Mock API calls with fixtures
+- Verify complete user workflows
+
+### Task 5: Backend Unit Tests - Model Handlers ✗ MISSING
+
+> **Consider:** When running `ls backend/tests/unit/`, what directory structure do you see? The plan on line 519 specifies creating `backend/tests/unit/test_handlers.py`. Does this file exist?
+>
+> **Reflect:** The plan lines 538-566 detail writing tests for OpenAI, Google, Bedrock, and other handlers. Looking at the CODEBASE_DISCOVERY.md you created, you documented 8+ model providers. Have you created any unit tests for these handlers?
+>
+> **Think about:** The success criteria on line 11 states "Backend unit tests for all model handlers." Without these tests, how will you ensure that request formatting, response parsing, and error handling work correctly for each provider?
+
+**Action Required:**
+- Create `backend/tests/unit/` directory structure
+- Create `test_handlers.py`, `test_registry.py`, `conftest.py`
+- Install test dependencies: `responses`, `moto`, `pytest-mock`
+- Write tests for ALL model handlers discovered in Task 0
+- Mock external API calls—no real network requests in tests
+
+### Task 6: Backend Unit Tests - Utilities ✗ MISSING
+
+> **Consider:** The plan lines 612-705 specify creating tests for `storage.py`, `rate_limit.py`, `content_filter.py`, `enhance.py`, and `job_manager.py`. Looking at your git commits with `git log --format='%s' -10`, do any commit messages mention backend unit tests?
+>
+> **Reflect:** These utility functions contain critical business logic (S3 operations, rate limiting, content filtering). Without tests, how confident are you that error handling, edge cases, and concurrent operations work correctly?
+>
+> **Think about:** Task 6 verification checklist (line 672) requires "Coverage for utils > 80%." What is your current backend coverage? (Hint: You can check with `pytest backend/tests/unit/ --cov=src/utils`)
+
+**Action Required:**
+- Create test files for each utility module
+- Use `moto` for S3 mocking (storage tests)
+- Use `freezegun` or `pytest-mock` for time-dependent tests (rate limiting)
+- Test edge cases: empty inputs, concurrent requests, external failures
+
+### Task 7: Documentation Updates ✗ INCOMPLETE
+
+**Partial completion verified:**
+- ✓ `Read .gitignore`: Coverage directories added (line 39: `coverage/`)
+
+**Missing documentation verified:**
+
+> **Consider:** The plan lines 721-728 requires updating `frontend/README.md` with a "Testing" section. When running `Grep "test|Test|coverage" frontend/README.md`, what testing-related content appears in the README?
+>
+> **Reflect:** Looking at the current `frontend/README.md`, do you see test scripts documented? The plan specifically states to "Add 'Testing' section with commands (`npm test`, `npm run test:coverage`)."
+>
+> **Think about:** The plan line 732 requires creating `CONTRIBUTING.md` with testing requirements. When running `ls /home/user/pixel-prompt/ | grep CONTRIBUTING`, what file do you see?
+
+**Action Required:**
+- Add comprehensive "Testing" section to `frontend/README.md` including:
+  - How to run tests (`npm test`)
+  - How to run coverage (`npm run test:coverage`)
+  - Test file structure explanation
+  - Coverage targets (60%+ for components)
+  - Troubleshooting common test failures
+- Create `CONTRIBUTING.md` at project root with:
+  - Testing requirements for contributors
+  - PR must maintain/improve coverage
+  - How to run full test suite before submitting
+  - Conventional commit format
+- Update `backend/TESTING.md` with unit test instructions (not just integration tests)
+
+### Phase Completion Status
+
+**Completed Tasks:** 3.5 out of 7
+- ✓ Task 0: Codebase Discovery
+- ✓ Task 1: Vitest Configuration (with dependency issue noted)
+- ✓ Task 2: Core Component Tests
+- ✓ Task 3: Feature Component Tests
+- ✗ Task 4: Integration Tests (0% complete)
+- ✗ Task 5: Backend Model Handler Tests (0% complete)
+- ✗ Task 6: Backend Utility Tests (0% complete)
+- ◐ Task 7: Documentation (30% complete - only .gitignore updated)
+
+**Overall Phase 1 Status:** ❌ **NOT APPROVED** - Requires significant additional work
+
+### Success Criteria Check
+
+From lines 850-858:
+- [ ] 40+ total tests across frontend and backend (Current: **122 frontend, 0 backend unit** = FAIL, need backend tests)
+- [x] 60%+ frontend component coverage (Current: **70-100% for tested components** = PASS)
+- [ ] 70%+ backend overall coverage (Current: **Unknown, no unit tests exist** = FAIL)
+- [ ] 80%+ backend handler coverage (Current: **0%, no tests** = FAIL)
+- [x] All tests passing on first run (Frontend: **YES**, Backend unit: **N/A**)
+- [ ] Test suite runs in < 1 minute total (Frontend: **11s**, Backend: **N/A**)
+- [ ] Documentation complete and accurate (**FAIL** - missing README testing section, CONTRIBUTING.md)
+- [x] Zero test flakiness (**PASS** - tests are deterministic)
+
+**Critical Gaps:**
+1. **No integration tests** - Cannot verify user flows work end-to-end
+2. **No backend unit tests** - Zero coverage for model handlers and utilities (Tasks 5-6 entirely missing)
+3. **Incomplete documentation** - Contributors don't know how to run tests or contribute
+
+**Next Steps:**
+1. Resolve React version conflict (React 19 vs @testing-library/react peer deps)
+2. Implement Task 4: Create all 4 integration test files
+3. Implement Task 5: Create backend unit tests for all model handlers
+4. Implement Task 6: Create backend unit tests for all utilities
+5. Complete Task 7: Update all documentation (README, CONTRIBUTING.md, backend/TESTING.md)
