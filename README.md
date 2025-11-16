@@ -27,6 +27,9 @@
     <a href="https://github.com/HatmanStack/pixel-prompt/actions/workflows/security.yml">
     <img src="https://github.com/HatmanStack/pixel-prompt/actions/workflows/security.yml/badge.svg" alt="Security">
     </a>
+    <a href="https://github.com/HatmanStack/pixel-prompt/actions/workflows/deploy-production.yml">
+    <img src="https://github.com/HatmanStack/pixel-prompt/actions/workflows/deploy-production.yml/badge.svg" alt="Production">
+    </a>
   </h4>
 </div>
 
