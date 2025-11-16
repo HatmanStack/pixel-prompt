@@ -24,6 +24,7 @@ from utils.storage import ImageStorage
 from utils.rate_limit import RateLimiter
 from utils.content_filter import ContentFilter
 from api.enhance import PromptEnhancer
+from api.log import handle_log
 
 # Initialize components at module level (Lambda container reuse)
 print("Initializing Lambda components...")
@@ -83,6 +84,8 @@ def lambda_handler(event, context):
             return handle_status(event)
         elif path == '/enhance' and method == 'POST':
             return handle_enhance(event)
+        elif path == '/log' and method == 'POST':
+            return handle_log_endpoint(event)
         elif path == '/gallery/list' and method == 'GET':
             return handle_gallery_list(event)
         elif path.startswith('/gallery/') and method == 'GET':
@@ -341,6 +344,58 @@ def handle_gallery_list(event):
         return response(500, {'error': 'Internal server error'})
 
 
+def handle_log_endpoint(event):
+    """
+    POST /log - Accept frontend error logs and write to CloudWatch.
+
+    Request body:
+        {
+            "level": "ERROR|WARNING|INFO|DEBUG",
+            "message": "error message",
+            "stack": "error stack trace (optional)",
+            "metadata": {"key": "value"} (optional)
+        }
+
+    Headers:
+        X-Correlation-ID: UUID for request tracing
+
+    Returns:
+        {"success": true, "message": "Log received successfully"}
+    """
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        # Get client IP
+        ip = event.get('requestContext', {}).get('http', {}).get('sourceIp', 'unknown')
+
+        # Check rate limit (lower limit for logging to prevent spam)
+        # Using 100 logs per hour per IP
+        is_limited = rate_limiter.check_rate_limit(ip)
+        if is_limited:
+            return response(429, {
+                'error': 'Rate limit exceeded',
+                'message': 'Too many log requests. Please try again later.'
+            })
+
+        # Extract correlation ID from headers
+        headers = event.get('headers', {})
+        correlation_id = headers.get('x-correlation-id') or headers.get('X-Correlation-ID')
+
+        # Handle log
+        result = handle_log(body, correlation_id, ip)
+
+        return response(200, result)
+
+    except json.JSONDecodeError:
+        return response(400, {'error': 'Invalid JSON in request body'})
+    except ValueError as e:
+        return response(400, {'error': str(e)})
+    except Exception as e:
+        print(f"Error in handle_log_endpoint: {str(e)}")
+        traceback.print_exc()
+        return response(500, {'error': 'Internal server error'})
+
+
 def handle_gallery_detail(event):
     """
     GET /gallery/{galleryId} - Get all images from a specific gallery.
@@ -418,7 +473,7 @@ def response(status_code, body):
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Correlation-ID'
         },
         'body': json.dumps(body)
     }
