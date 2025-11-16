@@ -2,14 +2,17 @@
  * ImageGrid Component
  * Grid layout for displaying 9 generated images
  * Optimized with useCallback to prevent breaking ImageCard memoization
+ * Includes ImageModal for full-screen viewing with keyboard navigation
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import ImageCard from './ImageCard';
+import ImageModal from '../features/generation/ImageModal';
 import styles from './ImageGrid.module.css';
 
 function ImageGrid({ images, modelNames = [] }) {
-  const [expandedImage, setExpandedImage] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Memoize image slots to prevent recreation on every render
   const imageSlots = useMemo(() => {
@@ -26,31 +29,32 @@ function ImageGrid({ images, modelNames = [] }) {
     });
   }, [images, modelNames]);
 
+  // Get only completed images for modal navigation
+  const completedImages = useMemo(() => {
+    return imageSlots
+      .map((slot, index) => ({ ...slot, originalIndex: index }))
+      .filter(slot => slot.status === 'completed' && slot.image);
+  }, [imageSlots]);
+
   // Memoize handleExpand to prevent breaking ImageCard memoization
   const handleExpand = useCallback((index) => {
-    setExpandedImage(imageSlots[index]);
-  }, [imageSlots]);
+    // Find the index in completedImages array
+    const completedIndex = completedImages.findIndex(img => img.originalIndex === index);
+    if (completedIndex !== -1) {
+      setCurrentImageIndex(completedIndex);
+      setModalOpen(true);
+    }
+  }, [completedImages]);
 
   // Memoize handleCloseModal callback
   const handleCloseModal = useCallback(() => {
-    setExpandedImage(null);
+    setModalOpen(false);
   }, []);
 
-  // Handle Escape key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && expandedImage) {
-        handleCloseModal();
-      }
-    };
-
-    if (expandedImage) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => {
-        document.removeEventListener('keydown', handleKeyDown);
-      };
-    }
-  }, [expandedImage]);
+  // Memoize handleNavigate callback for modal navigation
+  const handleNavigate = useCallback((newIndex) => {
+    setCurrentImageIndex(newIndex);
+  }, []);
 
   return (
     <>
@@ -67,37 +71,14 @@ function ImageGrid({ images, modelNames = [] }) {
         ))}
       </div>
 
-      {/* Image Modal */}
-      {expandedImage && expandedImage.image && (
-        <div
-          className={styles.modal}
-          onClick={handleCloseModal}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Expanded image view"
-        >
-          <button
-            className={styles.closeButton}
-            onClick={handleCloseModal}
-            aria-label="Close modal"
-          >
-            ✕
-          </button>
-          <div
-            className={styles.modalContent}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={expandedImage.image}
-              alt={`Expanded view of ${expandedImage.model} image`}
-              className={styles.modalImage}
-            />
-            <div className={styles.modalFooter}>
-              <h3>{expandedImage.model}</h3>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Image Modal with keyboard navigation */}
+      <ImageModal
+        isOpen={modalOpen}
+        onClose={handleCloseModal}
+        images={completedImages}
+        currentIndex={currentImageIndex}
+        onNavigate={handleNavigate}
+      />
     </>
   );
 }
