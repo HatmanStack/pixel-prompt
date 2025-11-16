@@ -26,6 +26,7 @@ from utils.content_filter import ContentFilter
 from api.enhance import PromptEnhancer
 from api.log import handle_log
 from utils.logger import StructuredLogger
+from utils import error_responses
 from uuid import uuid4
 
 # Initialize components at module level (Lambda container reuse)
@@ -156,26 +157,24 @@ def handle_generate(event, correlation_id=None):
 
         # Validate input
         if not prompt or len(prompt) == 0:
-            return response(400, {'error': 'Prompt is required'})
+            return response(400, error_responses.prompt_required())
 
         if len(prompt) > 1000:
-            return response(400, {'error': 'Prompt too long (max 1000 characters)'})
+            return response(400, error_responses.prompt_too_long(max_length=1000))
 
         # Check rate limit
         is_limited = rate_limiter.check_rate_limit(ip)
         if is_limited:
-            return response(429, {
-                'error': 'Rate limit exceeded',
-                'message': 'Too many requests. Please try again later.'
-            })
+            # Calculate retry after (rate limiter uses 1 hour window for global limit)
+            return response(429, error_responses.rate_limit_exceeded(
+                retry_after=3600,  # 1 hour in seconds
+                limit_type="requests"
+            ))
 
         # Check content filter
         is_blocked = content_filter.check_prompt(prompt)
         if is_blocked:
-            return response(400, {
-                'error': 'Inappropriate content detected',
-                'message': 'Your prompt contains inappropriate content and cannot be processed.'
-            })
+            return response(400, error_responses.inappropriate_content())
 
         # Build parameters
         params = {
@@ -226,11 +225,11 @@ def handle_generate(event, correlation_id=None):
 
     except json.JSONDecodeError:
         StructuredLogger.error("Invalid JSON in request body", correlation_id=correlation_id)
-        return response(400, {'error': 'Invalid JSON in request body'})
+        return response(400, error_responses.invalid_json())
     except Exception as e:
         StructuredLogger.error(f"Error in handle_generate: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
-        return response(500, {'error': 'Internal server error'})
+        return response(500, error_responses.internal_server_error())
 
 
 def handle_status(event, correlation_id=None):
@@ -251,10 +250,7 @@ def handle_status(event, correlation_id=None):
         status = job_manager.get_job_status(job_id)
 
         if not status:
-            return response(404, {
-                'error': 'Job not found',
-                'jobId': job_id
-            })
+            return response(404, error_responses.job_not_found(job_id))
 
         # Add CloudFront URLs to image results
         for result in status.get('results', []):
@@ -264,9 +260,9 @@ def handle_status(event, correlation_id=None):
         return response(200, status)
 
     except Exception as e:
-        print(f"Error in handle_status: {str(e)}")
+        StructuredLogger.error(f"Error in handle_status: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
-        return response(500, {'error': 'Internal server error'})
+        return response(500, error_responses.internal_server_error())
 
 
 def handle_enhance(event, correlation_id=None):
@@ -289,18 +285,15 @@ def handle_enhance(event, correlation_id=None):
 
         # Validate input
         if not prompt or len(prompt) == 0:
-            return response(400, {'error': 'Prompt is required'})
+            return response(400, error_responses.prompt_required())
 
         if len(prompt) > 500:
-            return response(400, {'error': 'Prompt too long for enhancement (max 500 characters)'})
+            return response(400, error_responses.prompt_too_long(max_length=500))
 
         # Check content filter
         is_blocked = content_filter.check_prompt(prompt)
         if is_blocked:
-            return response(400, {
-                'error': 'Inappropriate content detected',
-                'message': 'Your prompt contains inappropriate content and cannot be processed.'
-            })
+            return response(400, error_responses.inappropriate_content())
 
         # Enhance prompt
         enhanced = prompt_enhancer.enhance_safe(prompt)
@@ -311,11 +304,11 @@ def handle_enhance(event, correlation_id=None):
         })
 
     except json.JSONDecodeError:
-        return response(400, {'error': 'Invalid JSON in request body'})
+        return response(400, error_responses.invalid_json())
     except Exception as e:
-        print(f"Error in handle_enhance: {str(e)}")
+        StructuredLogger.error(f"Error in handle_enhance: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
-        return response(500, {'error': 'Internal server error'})
+        return response(500, error_responses.internal_server_error())
 
 
 def handle_gallery_list(event, correlation_id=None):
