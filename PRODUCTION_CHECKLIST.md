@@ -214,7 +214,7 @@ curl $API_ENDPOINT/status/<jobId>
 
 ### Performance Verification
 
-**Phase 3: Performance Benchmarking**
+**Phase 4: Performance Benchmarking**
 - [ ] Lambda cold start benchmarked and documented in PERFORMANCE.md
   - [ ] Cold start < 3 seconds (target)
   - [ ] Warm invocation < 500ms (excluding AI API calls)

@@ -200,9 +200,10 @@ class TestOtherHandlers:
 
         result = handle_stability(mock_model_config, sample_prompt, sample_params)
 
-        # Handler might not be fully implemented, check for expected structure
         assert result is not None
-        assert 'status' in result or 'error' in result
+        assert result['status'] == 'success'
+        assert 'image' in result
+        assert result['provider'] == 'stability'
 
     @responses.activate
     def test_black_forest_success(self, mock_model_config, sample_prompt, sample_params):
@@ -217,7 +218,9 @@ class TestOtherHandlers:
         result = handle_bfl(mock_model_config, sample_prompt, sample_params)
 
         assert result is not None
-        assert 'status' in result or 'error' in result
+        assert result['status'] == 'success'
+        assert 'image' in result
+        assert result['provider'] == 'bfl'
 
     @responses.activate
     def test_recraft_success(self, mock_model_config, sample_prompt, sample_params):
@@ -232,7 +235,9 @@ class TestOtherHandlers:
         result = handle_recraft(mock_model_config, sample_prompt, sample_params)
 
         assert result is not None
-        assert 'status' in result or 'error' in result
+        assert result['status'] == 'success'
+        assert 'image' in result
+        assert result['provider'] == 'recraft'
 
     @responses.activate
     def test_generic_openai_success(self, mock_model_config, sample_prompt, sample_params):

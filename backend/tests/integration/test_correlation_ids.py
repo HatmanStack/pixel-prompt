@@ -23,7 +23,8 @@ def test_generate_endpoint_accepts_correlation_id(api_endpoint, correlation_id):
             "guidance": 5.0,
             "control": 1.0
         },
-        headers={"X-Correlation-ID": correlation_id}
+        headers={"X-Correlation-ID": correlation_id},
+        timeout=30
     )
 
     assert response.status_code == 200
@@ -35,7 +36,8 @@ def test_status_endpoint_accepts_correlation_id(api_endpoint, correlation_id):
     # First create a job
     create_response = requests.post(
         f"{api_endpoint}/generate",
-        json={"prompt": "test", "steps": 28}
+        json={"prompt": "test", "steps": 28},
+        timeout=30
     )
     assert create_response.status_code == 200
     job_id = create_response.json()["jobId"]
@@ -43,7 +45,8 @@ def test_status_endpoint_accepts_correlation_id(api_endpoint, correlation_id):
     # Then check status with correlation ID
     response = requests.get(
         f"{api_endpoint}/status/{job_id}",
-        headers={"X-Correlation-ID": correlation_id}
+        headers={"X-Correlation-ID": correlation_id},
+        timeout=30
     )
 
     assert response.status_code == 200
@@ -55,7 +58,8 @@ def test_enhance_endpoint_accepts_correlation_id(api_endpoint, correlation_id):
     response = requests.post(
         f"{api_endpoint}/enhance",
         json={"prompt": "sunset"},
-        headers={"X-Correlation-ID": correlation_id}
+        headers={"X-Correlation-ID": correlation_id},
+        timeout=30
     )
 
     assert response.status_code == 200
@@ -71,7 +75,8 @@ def test_log_endpoint_requires_correlation_id(api_endpoint, correlation_id):
             "message": "Test error with correlation ID",
             "metadata": {"test": True}
         },
-        headers={"X-Correlation-ID": correlation_id}
+        headers={"X-Correlation-ID": correlation_id},
+        timeout=30
     )
 
     assert response.status_code == 200
@@ -84,7 +89,8 @@ def test_correlation_id_generated_if_not_provided(api_endpoint):
     """Test that backend generates correlation ID if not provided"""
     response = requests.post(
         f"{api_endpoint}/generate",
-        json={"prompt": "test without correlation id", "steps": 28}
+        json={"prompt": "test without correlation id", "steps": 28},
+        timeout=30
         # No X-Correlation-ID header
     )
 

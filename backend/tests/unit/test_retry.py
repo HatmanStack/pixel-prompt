@@ -131,15 +131,15 @@ class TestRetryDecorator:
             "success"
         ]
 
-        start_time = time.time()
-        decorated = retry_with_backoff(max_retries=3, base_delay=0.1, max_delay=1.0)(mock_func)
-        result = decorated()
-        elapsed_time = time.time() - start_time
+        with patch('src.utils.retry.time.sleep') as mock_sleep:
+            decorated = retry_with_backoff(max_retries=3, base_delay=0.1, max_delay=1.0)(mock_func)
+            result = decorated()
 
         assert result == "success"
-        # Should have delays of 0.1s and 0.2s (total ~0.3s)
-        assert elapsed_time >= 0.3
-        assert elapsed_time < 0.5  # Allow some margin
+        # Should have delays of 0.1s and 0.2s
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_any_call(0.1)
+        mock_sleep.assert_any_call(0.2)
 
     def test_max_delay_cap(self):
         """Test that max delay caps exponential growth"""
@@ -151,19 +151,19 @@ class TestRetryDecorator:
             "success"
         ]
 
-        start_time = time.time()
-        decorated = retry_with_backoff(
-            max_retries=4,
-            base_delay=0.1,
-            max_delay=0.2  # Cap at 0.2s
-        )(mock_func)
-        result = decorated()
-        elapsed_time = time.time() - start_time
+        with patch('src.utils.retry.time.sleep') as mock_sleep:
+            decorated = retry_with_backoff(
+                max_retries=4,
+                base_delay=0.1,
+                max_delay=0.2  # Cap at 0.2s
+            )(mock_func)
+            result = decorated()
 
         assert result == "success"
-        # Delays: 0.1, 0.2 (capped), 0.2 (capped) = ~0.5s total
-        assert elapsed_time >= 0.5
-        assert elapsed_time < 0.8  # Allow some margin
+        # Delays should respect the cap: 0.1, 0.2, 0.2
+        assert mock_sleep.call_count == 3
+        calls = [call[0][0] for call in mock_sleep.call_args_list]
+        assert calls == [0.1, 0.2, 0.2]
 
     def test_correlation_id_logging(self):
         """Test that correlation ID is included in logs"""

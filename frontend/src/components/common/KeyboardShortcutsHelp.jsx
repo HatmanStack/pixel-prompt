@@ -12,8 +12,10 @@ function KeyboardShortcutsHelp({ isOpen, onClose }) {
   const [isMac, setIsMac] = useState(false);
 
   useEffect(() => {
-    // Detect if user is on Mac
-    setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+    // Detect if user is on Mac (defensive for non-browser/SSR)
+    if (typeof navigator !== 'undefined' && navigator.platform) {
+      setIsMac(navigator.platform.toUpperCase().includes('MAC'));
+    }
   }, []);
 
   const modifier = isMac ? '⌘' : 'Ctrl';

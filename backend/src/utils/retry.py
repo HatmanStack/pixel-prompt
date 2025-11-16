@@ -95,7 +95,7 @@ def retry_with_backoff(max_retries=3, base_delay=1.0, max_delay=8.0, correlation
                     # Don't retry if this was the last attempt
                     if attempt >= max_retries:
                         func_name = getattr(func, '__name__', 'unknown_function')
-                        logger.error(
+                        logger.exception(
                             f"Max retries ({max_retries}) exceeded for {func_name}: {e}",
                             extra={'correlationId': correlation_id} if correlation_id else {}
                         )
