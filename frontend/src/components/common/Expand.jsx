@@ -3,15 +3,17 @@
  * Collapsible section with smooth animation
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import PropTypes from 'prop-types';
 import { useApp } from '../../context/AppContext';
 import styles from './Expand.module.css';
 
 function Expand({ title, children, defaultExpanded = false, onToggle }) {
+  const uniqueId = useId();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [height, setHeight] = useState(defaultExpanded ? 'auto' : '0px');
   const contentRef = useRef(null);
+  const collapseTimerRef = useRef(null);
   const { playSound } = useApp();
 
   // Update height when expanded state changes
@@ -34,9 +36,15 @@ function Expand({ title, children, defaultExpanded = false, onToggle }) {
         setHeight(`${scrollHeight}px`);
 
         // Force reflow
-        setTimeout(() => {
+        collapseTimerRef.current = setTimeout(() => {
           setHeight('0px');
         }, 10);
+
+        return () => {
+          if (collapseTimerRef.current) {
+            clearTimeout(collapseTimerRef.current);
+          }
+        };
       }
     }
   }, [isExpanded]);
@@ -68,7 +76,7 @@ function Expand({ title, children, defaultExpanded = false, onToggle }) {
         onClick={handleToggle}
         onKeyDown={handleKeyDown}
         aria-expanded={isExpanded}
-        aria-controls={`expand-content-${title}`}
+        aria-controls={uniqueId}
         type="button"
       >
         <span className={styles.title}>{title}</span>
@@ -82,7 +90,7 @@ function Expand({ title, children, defaultExpanded = false, onToggle }) {
 
       <div
         ref={contentRef}
-        id={`expand-content-${title}`}
+        id={uniqueId}
         className={styles.content}
         style={{ height }}
         aria-hidden={!isExpanded}

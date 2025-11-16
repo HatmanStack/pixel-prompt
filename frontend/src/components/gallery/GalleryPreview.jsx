@@ -24,7 +24,7 @@ function GalleryPreview({ gallery, isSelected, onClick }) {
 
   // Handle preview image loading
   const handleImageError = (e) => {
-    e.target.src = '/placeholder-image.png'; // Fallback image
+    e.target.src = '/vite.svg'; // Fallback to Vite logo
     e.target.alt = 'Preview unavailable';
   };
 

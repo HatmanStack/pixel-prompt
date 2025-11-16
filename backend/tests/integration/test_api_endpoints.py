@@ -18,13 +18,16 @@ import json
 # Load API endpoint from environment
 API_ENDPOINT = os.environ.get('API_ENDPOINT', 'http://localhost:3000')
 
+# Timeout for all HTTP requests (in seconds)
+REQUEST_TIMEOUT = 30
+
 
 class TestHealthAndBasicEndpoints:
     """Test basic API health and routing."""
 
     def test_404_on_invalid_route(self):
         """Test that invalid routes return 404."""
-        response = requests.get(f"{API_ENDPOINT}/invalid-route")
+        response = requests.get(f"{API_ENDPOINT}/invalid-route", timeout=REQUEST_TIMEOUT)
         assert response.status_code == 404
         data = response.json()
         assert 'error' in data
@@ -32,7 +35,7 @@ class TestHealthAndBasicEndpoints:
 
     def test_cors_headers_present(self):
         """Test that CORS headers are configured."""
-        response = requests.get(f"{API_ENDPOINT}/invalid-route")
+        response = requests.get(f"{API_ENDPOINT}/invalid-route", timeout=REQUEST_TIMEOUT)
         assert 'Access-Control-Allow-Origin' in response.headers
         assert response.headers['Access-Control-Allow-Origin'] == '*'
 
@@ -45,7 +48,8 @@ class TestPromptEnhancement:
         response = requests.post(
             f"{API_ENDPOINT}/enhance",
             json={'prompt': 'cat'},
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert response.status_code == 200
@@ -60,7 +64,8 @@ class TestPromptEnhancement:
         response = requests.post(
             f"{API_ENDPOINT}/enhance",
             json={'prompt': ''},
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert response.status_code == 400
@@ -72,7 +77,8 @@ class TestPromptEnhancement:
         response = requests.post(
             f"{API_ENDPOINT}/enhance",
             json={},
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert response.status_code == 400
@@ -83,7 +89,8 @@ class TestPromptEnhancement:
         response = requests.post(
             f"{API_ENDPOINT}/enhance",
             json={'prompt': long_prompt},
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert response.status_code == 400
@@ -94,7 +101,7 @@ class TestGalleryEndpoints:
 
     def test_gallery_list(self):
         """Test listing all galleries."""
-        response = requests.get(f"{API_ENDPOINT}/gallery/list")
+        response = requests.get(f"{API_ENDPOINT}/gallery/list", timeout=REQUEST_TIMEOUT)
 
         assert response.status_code == 200
         data = response.json()
@@ -104,7 +111,7 @@ class TestGalleryEndpoints:
 
     def test_gallery_detail_invalid_id(self):
         """Test gallery detail with invalid ID."""
-        response = requests.get(f"{API_ENDPOINT}/gallery/invalid-id-12345")
+        response = requests.get(f"{API_ENDPOINT}/gallery/invalid-id-12345", timeout=REQUEST_TIMEOUT)
 
         # Should return 200 with empty images (gallery doesn't exist)
         assert response.status_code == 200
@@ -132,7 +139,8 @@ class TestImageGeneration:
                 'guidance': 7,
                 'ip': '127.0.0.1'
             },
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert response.status_code == 200
@@ -140,7 +148,6 @@ class TestImageGeneration:
         assert 'jobId' in data
         assert 'message' in data
         assert 'totalModels' in data
-        return data['jobId']
 
     def test_job_status_check(self):
         """Test checking job status."""
@@ -153,14 +160,15 @@ class TestImageGeneration:
                 'guidance': 7,
                 'ip': '127.0.0.1'
             },
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert create_response.status_code == 200
         job_id = create_response.json()['jobId']
 
         # Check status
-        status_response = requests.get(f"{API_ENDPOINT}/status/{job_id}")
+        status_response = requests.get(f"{API_ENDPOINT}/status/{job_id}", timeout=REQUEST_TIMEOUT)
 
         assert status_response.status_code == 200
         status_data = status_response.json()
@@ -171,10 +179,10 @@ class TestImageGeneration:
 
     def test_invalid_job_id(self):
         """Test status check with invalid job ID."""
-        response = requests.get(f"{API_ENDPOINT}/status/invalid-job-id")
+        response = requests.get(f"{API_ENDPOINT}/status/invalid-job-id", timeout=REQUEST_TIMEOUT)
 
-        # Should return error for non-existent job
-        assert response.status_code in [400, 404, 500]
+        # Should return 404 for non-existent job
+        assert response.status_code == 404
 
 
 class TestInputValidation:
@@ -185,7 +193,8 @@ class TestInputValidation:
         response = requests.post(
             f"{API_ENDPOINT}/generate",
             json={'prompt': '', 'steps': 25, 'guidance': 7},
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert response.status_code == 400
@@ -196,7 +205,8 @@ class TestInputValidation:
         response = requests.post(
             f"{API_ENDPOINT}/generate",
             json={'prompt': long_prompt, 'steps': 25, 'guidance': 7},
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert response.status_code == 400
@@ -206,7 +216,8 @@ class TestInputValidation:
         response = requests.post(
             f"{API_ENDPOINT}/generate",
             data='invalid json{',
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=REQUEST_TIMEOUT
         )
 
         assert response.status_code == 400
