@@ -204,6 +204,33 @@ Enhance prompt using configured LLM.
 }
 ```
 
+## Testing
+
+### Unit Tests
+
+Run unit tests (88 tests covering core modules):
+```bash
+cd backend
+pip install -r requirements.txt -r tests/requirements.txt
+python -m pytest tests/unit/ -v
+```
+
+Test coverage:
+```bash
+pytest tests/unit/ --cov=src --cov-report=html
+open htmlcov/index.html  # View coverage report
+```
+
+### Integration Tests
+
+Run integration tests against deployed backend:
+```bash
+export API_ENDPOINT="https://your-api.execute-api.region.amazonaws.com/Prod"
+pytest tests/integration/ -v
+```
+
+See [TESTING.md](./TESTING.md) for comprehensive testing guide.
+
 ## Development
 
 ### Project Structure
