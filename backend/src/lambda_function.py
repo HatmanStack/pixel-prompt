@@ -25,6 +25,8 @@ from utils.rate_limit import RateLimiter
 from utils.content_filter import ContentFilter
 from api.enhance import PromptEnhancer
 from api.log import handle_log
+from utils.logger import StructuredLogger
+from uuid import uuid4
 
 # Initialize components at module level (Lambda container reuse)
 print("Initializing Lambda components...")
@@ -56,6 +58,26 @@ prompt_enhancer = PromptEnhancer(model_registry)
 print(f"Lambda initialization complete: {model_registry.get_model_count()} models configured")
 
 
+def extract_correlation_id(event):
+    """
+    Extract correlation ID from event headers.
+    Generates new UUID if not provided.
+
+    Args:
+        event: API Gateway event object
+
+    Returns:
+        str: Correlation ID
+    """
+    headers = event.get('headers', {})
+    correlation_id = headers.get('x-correlation-id') or headers.get('X-Correlation-ID')
+
+    if not correlation_id:
+        correlation_id = str(uuid4())
+
+    return correlation_id
+
+
 def lambda_handler(event, context):
     """
     Main Lambda handler function.
@@ -68,38 +90,41 @@ def lambda_handler(event, context):
     Returns:
         API Gateway response object with status code and body
     """
+    # Extract correlation ID from headers
+    correlation_id = extract_correlation_id(event)
+
     # Extract path and method from API Gateway event
     path = event.get('rawPath', event.get('path', ''))
     method = event.get('requestContext', {}).get('http', {}).get('method',
              event.get('httpMethod', ''))
 
-    # Log request metadata only (not full event to avoid credential leaks)
-    print(f"Request: {method} {path}")
+    # Log request with correlation ID
+    StructuredLogger.info(f"Request: {method} {path}", correlation_id=correlation_id)
 
     try:
         # Route based on path and method
         if path == '/generate' and method == 'POST':
-            return handle_generate(event)
+            return handle_generate(event, correlation_id)
         elif path.startswith('/status/') and method == 'GET':
-            return handle_status(event)
+            return handle_status(event, correlation_id)
         elif path == '/enhance' and method == 'POST':
-            return handle_enhance(event)
+            return handle_enhance(event, correlation_id)
         elif path == '/log' and method == 'POST':
             return handle_log_endpoint(event)
         elif path == '/gallery/list' and method == 'GET':
-            return handle_gallery_list(event)
+            return handle_gallery_list(event, correlation_id)
         elif path.startswith('/gallery/') and method == 'GET':
-            return handle_gallery_detail(event)
+            return handle_gallery_detail(event, correlation_id)
         else:
             return response(404, {'error': 'Not found', 'path': path, 'method': method})
 
     except Exception as e:
-        print(f"Error in lambda_handler: {str(e)}")
+        StructuredLogger.error(f"Error in lambda_handler: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
         return response(500, {'error': 'Internal server error'})
 
 
-def handle_generate(event):
+def handle_generate(event, correlation_id=None):
     """
     POST /generate - Create image generation job.
 
@@ -185,7 +210,12 @@ def handle_generate(event):
         thread.daemon = True
         thread.start()
 
-        print(f"Job {job_id} created and started in background")
+        StructuredLogger.info(
+            f"Job {job_id} created and started in background",
+            correlation_id=correlation_id,
+            jobId=job_id,
+            prompt=prompt[:100]  # Log first 100 chars of prompt
+        )
 
         # Return job ID immediately
         return response(200, {
@@ -195,14 +225,15 @@ def handle_generate(event):
         })
 
     except json.JSONDecodeError:
+        StructuredLogger.error("Invalid JSON in request body", correlation_id=correlation_id)
         return response(400, {'error': 'Invalid JSON in request body'})
     except Exception as e:
-        print(f"Error in handle_generate: {str(e)}")
+        StructuredLogger.error(f"Error in handle_generate: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
         return response(500, {'error': 'Internal server error'})
 
 
-def handle_status(event):
+def handle_status(event, correlation_id=None):
     """
     GET /status/{jobId} - Get job status and results.
 
@@ -238,7 +269,7 @@ def handle_status(event):
         return response(500, {'error': 'Internal server error'})
 
 
-def handle_enhance(event):
+def handle_enhance(event, correlation_id=None):
     """
     POST /enhance - Enhance prompt using configured LLM.
 
@@ -287,7 +318,7 @@ def handle_enhance(event):
         return response(500, {'error': 'Internal server error'})
 
 
-def handle_gallery_list(event):
+def handle_gallery_list(event, correlation_id=None):
     """
     GET /gallery/list - List all galleries with preview images.
 
@@ -396,7 +427,7 @@ def handle_log_endpoint(event):
         return response(500, {'error': 'Internal server error'})
 
 
-def handle_gallery_detail(event):
+def handle_gallery_detail(event, correlation_id=None):
     """
     GET /gallery/{galleryId} - Get all images from a specific gallery.
 

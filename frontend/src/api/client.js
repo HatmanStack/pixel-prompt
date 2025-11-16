@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL, API_ROUTES, REQUEST_TIMEOUT, RETRY_CONFIG } from './config';
+import { generateCorrelationId } from '../utils/correlation';
 
 /**
  * Sleep utility for retry backoff
@@ -20,11 +21,15 @@ async function apiFetch(endpoint, options = {}, retryCount = 0) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
+  // Generate correlation ID for request tracing (or use provided one)
+  const correlationId = options.correlationId || generateCorrelationId();
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        'X-Correlation-ID': correlationId,
         ...options.headers,
       },
       signal: controller.signal,
@@ -64,8 +69,12 @@ async function apiFetch(endpoint, options = {}, retryCount = 0) {
       console.log(`Retrying request (attempt ${retryCount + 1}/${RETRY_CONFIG.maxRetries}) after ${delay}ms...`);
       await sleep(delay);
 
-      return apiFetch(endpoint, options, retryCount + 1);
+      // Pass correlation ID to retry
+      return apiFetch(endpoint, { ...options, correlationId }, retryCount + 1);
     }
+
+    // Add correlation ID to error for logging
+    error.correlationId = correlationId;
 
     // Log and rethrow error
     console.error('API request failed:', error);
