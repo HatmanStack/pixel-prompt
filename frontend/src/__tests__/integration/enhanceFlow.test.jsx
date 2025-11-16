@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import GenerationPanel from '../../components/generation/GenerationPanel';
 import { AppProvider } from '../../context/AppContext';
+import { ToastProvider } from '../../context/ToastContext';
 import * as apiClient from '../../api/client';
 import { mockEnhanceResponse, mockGenerateResponse, mockJobStatusCompleted } from '../fixtures/apiResponses';
 
@@ -28,9 +29,11 @@ describe('Enhance Prompt Flow - Integration', () => {
     apiClient.getJobStatus.mockResolvedValue(mockJobStatusCompleted);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     // Step 1: User enters short prompt
@@ -94,9 +97,11 @@ describe('Enhance Prompt Flow - Integration', () => {
     apiClient.enhancePrompt.mockResolvedValue(mockEnhanceResponse);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     // Enhance a prompt
@@ -130,9 +135,11 @@ describe('Enhance Prompt Flow - Integration', () => {
     apiClient.enhancePrompt.mockRejectedValue(new Error('Enhancement service unavailable'));
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -159,9 +166,11 @@ describe('Enhance Prompt Flow - Integration', () => {
     );
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -185,9 +194,11 @@ describe('Enhance Prompt Flow - Integration', () => {
     apiClient.enhancePrompt.mockResolvedValue(mockEnhanceResponse);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);

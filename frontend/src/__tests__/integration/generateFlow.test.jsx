@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import GenerationPanel from '../../components/generation/GenerationPanel';
 import { AppProvider } from '../../context/AppContext';
+import { ToastProvider } from '../../context/ToastContext';
 import * as apiClient from '../../api/client';
 import {
   mockGenerateResponse,
@@ -41,9 +42,11 @@ describe('Generate Images Flow - Integration', () => {
       .mockResolvedValue(mockJobStatusCompleted);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     // Step 1: User enters prompt
@@ -135,9 +138,11 @@ describe('Generate Images Flow - Integration', () => {
     apiClient.getJobStatus.mockResolvedValue(partialWithErrors);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -164,9 +169,11 @@ describe('Generate Images Flow - Integration', () => {
     apiClient.getJobStatus.mockResolvedValue(mockJobStatusCompleted);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     // First generation
@@ -210,9 +217,11 @@ describe('Generate Images Flow - Integration', () => {
     apiClient.getJobStatus.mockResolvedValue(mockJobStatusPending);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);

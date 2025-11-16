@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import GenerationPanel from '../../components/generation/GenerationPanel';
 import { AppProvider } from '../../context/AppContext';
+import { ToastProvider } from '../../context/ToastContext';
 import * as apiClient from '../../api/client';
 import {
   mockErrorResponse,
@@ -30,9 +31,11 @@ describe('Error Handling Flow - Integration', () => {
     apiClient.generateImages.mockRejectedValue(mockNetworkError);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -59,9 +62,11 @@ describe('Error Handling Flow - Integration', () => {
     apiClient.generateImages.mockRejectedValue(rateLimitError);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -86,9 +91,11 @@ describe('Error Handling Flow - Integration', () => {
     apiClient.generateImages.mockRejectedValue(filterError);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -113,9 +120,11 @@ describe('Error Handling Flow - Integration', () => {
     apiClient.getJobStatus.mockRejectedValue(notFoundError);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -141,9 +150,11 @@ describe('Error Handling Flow - Integration', () => {
     apiClient.generateImages.mockRejectedValue(mockTimeoutError);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -164,9 +175,11 @@ describe('Error Handling Flow - Integration', () => {
     apiClient.generateImages.mockRejectedValue(new Error('Test error'));
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -196,9 +209,11 @@ describe('Error Handling Flow - Integration', () => {
     const user = userEvent.setup();
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     // Try to click generate without entering prompt
@@ -226,9 +241,11 @@ describe('Error Handling Flow - Integration', () => {
     apiClient.generateImages.mockResolvedValueOnce(mockGenerateResponse);
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
@@ -265,9 +282,11 @@ describe('Error Handling Flow - Integration', () => {
     apiClient.enhancePrompt.mockRejectedValue(new Error('Enhancement error'));
 
     render(
-      <AppProvider>
-        <GenerationPanel />
-      </AppProvider>
+      <ToastProvider>
+        <AppProvider>
+          <GenerationPanel />
+        </AppProvider>
+      </ToastProvider>
     );
 
     const promptInput = screen.getByLabelText(/image prompt/i);
