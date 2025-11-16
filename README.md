@@ -194,6 +194,63 @@ Your AWS account needs permissions to create:
 
 For more detailed deployment documentation, see `PRODUCTION_CHECKLIST.md`.
 
+## CI/CD Pipeline
+
+Pixel Prompt uses **GitHub Actions** for automated testing, security scanning, and deployment.
+
+### Automated Workflows
+
+| Workflow | Trigger | Purpose | Duration |
+|----------|---------|---------|----------|
+| **Tests** | PR, push to main | Run frontend & backend tests | ~5 min |
+| **Security** | PR, push, weekly | Vulnerability scanning | ~3 min |
+| **Deploy Staging** | Merge to main | Auto-deploy to staging | ~10 min |
+| **Deploy Production** | Manual or release | Deploy to production | ~15 min |
+
+### CI/CD Flow
+
+```
+Pull Request → Tests + Security → Review → Merge to Main
+                   ↓                           ↓
+            All checks pass              Deploy Staging
+                                              ↓
+                                        Verify Staging
+                                              ↓
+                                   Manual Production Deploy
+                                              ↓
+                                      Deploy Production ✅
+```
+
+### For Contributors
+
+When you create a pull request:
+1. **Automated tests** run on your code (frontend + backend)
+2. **Security scans** check for vulnerabilities
+3. **All checks must pass** before merge
+4. **At least 1 approval** required from maintainer
+5. After merge, **staging deployment** runs automatically
+
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for detailed contributor guidelines.
+
+### For Maintainers
+
+**Deploying to Production**:
+1. Go to **Actions** → **Deploy to Production**
+2. Click **Run workflow**
+3. Enter confirmation: `deploy-production`
+4. **Approve deployment** when prompted
+5. Monitor deployment in Actions tab
+
+See [PRODUCTION_DEPLOYMENT.md](.github/PRODUCTION_DEPLOYMENT.md) for detailed deployment guide.
+
+### Documentation
+
+- [All Workflows](.github/WORKFLOWS.md) - Complete workflow documentation
+- [CI/CD Monitoring](docs/CI_CD_MONITORING.md) - Monitoring and notifications
+- [Troubleshooting](docs/CI_CD_TROUBLESHOOTING.md) - Common issues and solutions
+- [Development Guide](docs/DEVELOPMENT.md) - Local development workflow
+- [Deployment Secrets](.github/DEPLOYMENT_SECRETS.md) - Required GitHub Secrets
+
 ## Functionality
 
 This App was creating using the HuggingFace Inference API.  Although Free to use, some functionality isn't available yet.  The Style and Layout switches are based on the IP adapter which isn't supported by the Inference API. If you decide to use custom endpoints this is available now.
