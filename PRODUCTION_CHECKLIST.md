@@ -15,7 +15,25 @@ Pre-deployment checklist for Pixel Prompt Complete to ensure production readines
 
 ### Testing
 
-- [ ] Integration tests pass (`pytest tests/integration/`)
+**Phase 1: Test Suite Coverage**
+- [ ] Frontend test suite passes: `npm test` (70%+ coverage on critical paths)
+- [ ] Backend unit tests pass: `pytest tests/unit/` (80%+ coverage on handlers)
+- [ ] Backend integration tests pass: `pytest tests/integration/`
+- [ ] Component tests cover all major UI components (10+ components)
+- [ ] Integration tests for user flows (generate, enhance, gallery)
+- [ ] Hooks tests pass (useJobPolling, useGallery, etc.)
+- [ ] Utility tests pass (logger, correlation, error messages)
+
+**Phase 2: Error Handling & Resilience**
+- [ ] Error boundaries catch React errors and show fallback UI
+- [ ] Correlation IDs present in all frontend API requests
+- [ ] Correlation IDs appear in CloudWatch logs (backend)
+- [ ] S3 retry logic tested (simulate transient S3 error)
+- [ ] Frontend error logging to /log endpoint working
+- [ ] User-facing error messages tested (rate limit, network, etc.)
+- [ ] Retry logic tested (exponential backoff verified)
+
+**Manual Testing**
 - [ ] Manual smoke testing completed
 - [ ] Test on multiple browsers (Chrome, Firefox, Safari, Edge)
 - [ ] Test on mobile devices (iOS, Android)
@@ -83,6 +101,12 @@ Pre-deployment checklist for Pixel Prompt Complete to ensure production readines
   - [ ] S3 storage
   - [ ] CloudFront distributions
 - [ ] Bedrock access enabled (if using Nova/SD3.5)
+
+**Phase 3: Deployment Automation**
+- [ ] Deployment script works: `./scripts/deploy.sh staging`
+- [ ] Frontend .env automatically generated with correct API endpoint
+- [ ] CloudFormation outputs extracted successfully
+- [ ] Staging environment deployed and verified
 
 ## Deployment
 
@@ -190,14 +214,32 @@ curl $API_ENDPOINT/status/<jobId>
 
 ### Performance Verification
 
-- [ ] Lambda cold start < 5 seconds
+**Phase 3: Performance Benchmarking**
+- [ ] Lambda cold start benchmarked and documented in PERFORMANCE.md
+  - [ ] Cold start < 3 seconds (target)
+  - [ ] Warm invocation < 500ms (excluding AI API calls)
+  - [ ] P95 documented for both cold and warm starts
+- [ ] Lighthouse audit completed and documented
+  - [ ] Performance score > 90
+  - [ ] Accessibility score > 90
+  - [ ] Best Practices score > 90
+  - [ ] SEO score > 90
+  - [ ] Core Web Vitals meet targets (LCP < 2.5s, CLS < 0.1)
+- [ ] Frontend bundle size measured and documented
+  - [ ] Total bundle < 500 KB gzipped
+  - [ ] Initial load < 200 KB gzipped
+- [ ] Load testing completed with 100 concurrent users
+  - [ ] Error rate < 1%
+  - [ ] P95 response time < 5s (documented in PERFORMANCE.md)
+  - [ ] No Lambda throttling errors
+- [ ] CloudFront distribution verified
+  - [ ] Images served via CloudFront URL
+  - [ ] Cache hit/miss behavior verified
+  - [ ] Deployment time < 15 minutes (documented)
+
+**General Performance**
 - [ ] API response time < 1 second (job creation)
 - [ ] Frontend load time < 3 seconds (First Contentful Paint)
-- [ ] Lighthouse score:
-  - [ ] Performance > 90
-  - [ ] Accessibility > 90
-  - [ ] Best Practices > 90
-  - [ ] SEO > 90
 - [ ] Images load progressively
 - [ ] No memory leaks (leave app open for 10+ minutes)
 
