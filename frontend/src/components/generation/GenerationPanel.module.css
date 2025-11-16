@@ -11,8 +11,25 @@
   gap: var(--spacing-lg);
 }
 
+.promptActions {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: stretch;
+}
+
+.promptActions > * {
+  flex: 1;
+}
+
 .resultsSection {
   width: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .promptActions {
+    flex-direction: column;
+  }
 }
 
 /* Error Message */

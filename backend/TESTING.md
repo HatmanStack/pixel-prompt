@@ -1,8 +1,68 @@
-# Integration Testing Guide - Pixel Prompt Complete Backend
+# Testing Guide - Pixel Prompt Complete Backend
+
+Comprehensive testing documentation for both unit and integration tests.
+
+## Unit Tests
+
+The backend includes 88 unit tests covering core modules and utilities.
+
+### Running Unit Tests
+
+```bash
+cd backend
+pip install -r requirements.txt -r tests/requirements.txt
+python -m pytest tests/unit/ -v
+```
+
+### Test Coverage
+
+- **Content Filtering** (16 tests): NSFW detection, keyword management, edge cases
+- **Prompt Enhancement** (12 tests): OpenAI/Gemini providers, error handling, fallback behavior
+- **Model Registry** (19 tests): Provider detection, model loading, 1-based indexing
+- **Model Handlers** (11 tests): OpenAI, Google, Bedrock, Stability AI, BFL, Recraft
+- **Rate Limiting** (9 tests): Global/IP limits, cleanup, whitelist bypass
+- **Job Manager** (15 tests): Job lifecycle, status tracking, result aggregation
+- **Storage Utilities** (6 tests): S3 upload, CloudFront URLs, gallery management
+
+### Test Organization
+
+```
+backend/tests/
+├── unit/
+│   ├── conftest.py                    # Shared fixtures (mock S3, sample data)
+│   ├── fixtures/
+│   │   └── api_responses.py           # Mock API responses
+│   ├── test_content_filter.py         # Content moderation tests
+│   ├── test_enhance.py                # Prompt enhancement tests
+│   ├── test_registry.py               # Model registry tests
+│   ├── test_handlers.py               # Provider handler tests
+│   ├── test_rate_limit.py             # Rate limiting tests
+│   ├── test_job_manager.py            # Job management tests
+│   └── test_storage.py                # S3 storage tests
+└── integration/
+    └── test_api_endpoints.py          # End-to-end API tests
+```
+
+### Running Specific Test Suites
+
+```bash
+# Run only content filter tests
+pytest tests/unit/test_content_filter.py -v
+
+# Run only tests that don't require S3 mocking
+pytest tests/unit/test_content_filter.py tests/unit/test_enhance.py tests/unit/test_registry.py -v
+
+# Run with coverage
+pytest tests/unit/ --cov=src --cov-report=html
+```
+
+---
+
+## Integration Testing
 
 Comprehensive end-to-end testing plan for the deployed serverless backend.
 
-## Prerequisites
+### Prerequisites
 
 Before testing, ensure:
 

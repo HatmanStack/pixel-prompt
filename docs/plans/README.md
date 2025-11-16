@@ -1,124 +1,126 @@
-# Pixel Prompt Complete - Implementation Plan
+# Pixel Prompt Complete - Comprehensive Enhancement Plan
 
 ## Feature Overview
 
-Pixel Prompt Complete is a new distribution of the Pixel Prompt text-to-image generation platform, designed as a fully serverless architecture with a modern React frontend and AWS Lambda backend. This distribution combines the best components from the existing `pixel-prompt-js` (React Native) and `pixel-prompt-lambda` codebases into a unified, deployable package optimized for web delivery.
+This plan details a comprehensive enhancement of the Pixel Prompt Complete application to achieve production-ready status with enterprise-grade quality standards. The implementation encompasses seven major areas: expanded test coverage across frontend and backend, robust error handling and resilience, production deployment infrastructure with automated verification, performance benchmarking and optimization, advanced UI features for improved user experience, and a complete CI/CD pipeline for automated deployments.
 
-The system features a dynamic model registry supporting variable model counts (user can deploy with 3, 9, or 20+ models), intelligent API routing with automatic provider detection, and async job processing with real-time status updates. Users can generate images from multiple AI models simultaneously (DALL-E 3, Stable Diffusion, Gemini, Imagen, etc.), browse historical generations in a gallery, and enhance prompts using configured LLM models.
+The project is designed as a **public open-source repository** on GitHub, requiring special consideration for easy deployment by external users, secrets management in public CI/CD workflows, and comprehensive documentation for contributors. All tooling choices prioritize free and open-source solutions to maximize accessibility.
 
-The entire infrastructure is defined as code using AWS SAM (Serverless Application Model), making deployment as simple as `sam deploy --guided` with prompts for model names and API keys. The frontend is built with Vite React for optimal performance and developer experience, maintaining full feature parity with the existing React Native app including parallel model execution, image galleries, parameter controls, and visual enhancements.
+This enhancement transforms the application from a well-architected proof-of-concept into a battle-tested production system ready for public use, with automated testing achieving 70%+ coverage on critical paths, comprehensive error handling preventing user-facing failures, and streamlined deployment processes enabling anyone to deploy their own instance within 30 minutes.
 
 ## Prerequisites
 
 ### Development Environment
-- **Node.js**: v18+ (for Vite frontend development)
-- **Python**: 3.12+ (for Lambda development and testing)
-- **AWS CLI**: v2+ configured with credentials
-- **AWS SAM CLI**: Latest version for CloudFormation deployment
-- **Git**: For version control and submodule management
+- Node.js 18+ and npm
+- Python 3.12+
+- AWS CLI configured with appropriate credentials
+- AWS SAM CLI
+- Git and GitHub account
+- Code editor with ESLint support
 
 ### AWS Account Requirements
-- Active AWS account with appropriate permissions:
-  - IAM: Create roles and policies
-  - Lambda: Create and invoke functions
-  - S3: Create buckets and objects
-  - CloudFront: Create distributions
-  - API Gateway: Create HTTP APIs
-  - DynamoDB: Optional for future enhancements
-- Sufficient service quotas (Lambda concurrent executions, S3 storage, etc.)
+- AWS account with permissions to create:
+  - Lambda functions
+  - API Gateway HTTP APIs
+  - S3 buckets
+  - CloudFront distributions
+  - IAM roles and policies
+  - CloudFormation stacks
+- Multiple API keys for AI providers (OpenAI, Google, Stability AI, etc.)
 
-### API Keys & Credentials
-Prepare API keys for desired AI models:
-- **OpenAI**: For DALL-E 3
-- **Stability AI**: For Stable Diffusion variants
-- **Black Forest Labs (BFL)**: For Flux models
-- **Google Cloud (GPC)**: For Gemini 2.0 and Imagen 3.0
-- **Recraft**: For Recraft v3
-- **AWS Bedrock**: Access enabled for Nova Canvas and Stable Diffusion (region: us-west-2)
-- **Groq**: Optional for prompt enhancement (or use one of the above models)
+### Local Testing Tools
+- pytest for Python testing
+- Vitest for JavaScript testing
+- Lighthouse CLI for performance auditing
+- Artillery or k6 for load testing (installed as needed)
 
 ### Knowledge Requirements
-- Understanding of React and modern JavaScript (ES6+, async/await, Promises)
-- Familiarity with AWS Lambda and serverless architectures
-- Basic CloudFormation/SAM template syntax
-- REST API design patterns
-- S3 bucket policies and CloudFront distributions
+
+**This plan assumes:**
+- **Technical Knowledge**: Familiarity with React 18+, AWS serverless, Python 3.12+, testing frameworks
+- **Codebase Knowledge**: Zero - implementer will explore the Pixel Prompt codebase as part of each phase's discovery tasks
+- **Existing Codebase**: The Pixel Prompt application already exists with working frontend and backend (not building from scratch)
+
+**Implementer Profile:**
+- Skilled developer with React and AWS experience
+- Unfamiliar with this specific codebase structure
+- Will follow exploration tasks to discover existing components, endpoints, and patterns
+- Will not deviate from the plan without documenting findings
 
 ## Phase Summary
 
-| Phase | Goal | Sections | Est. Tokens | Prerequisites |
-|-------|------|----------|-------------|---------------|
-| [Phase 0](Phase-0.md) | Architecture & Design Decisions | N/A | N/A | Read entire plan |
-| [Phase 1](Phase-1.md) | Complete Backend Implementation | 3 sections (23 tasks) | ~100,000 | AWS CLI configured |
-| [Phase 2](Phase-2.md) | Complete Frontend Implementation & Testing | 4 sections | ~100,000 | Phase 1 complete |
+| Phase | Goal | Est. Tokens | Duration |
+|-------|------|-------------|----------|
+| [Phase 0](Phase-0.md) | Architecture & Design Decisions | N/A | Reference |
+| [Phase 1](Phase-1.md) | Testing Foundation | ~100,000 | 2-3 days |
+| [Phase 2](Phase-2.md) | Error Handling & Resilience | ~90,000 | 2-3 days |
+| [Phase 3](Phase-3.md) | Production Deployment & Verification | ~110,000 | 3-4 days |
+| [Phase 4](Phase-4.md) | Performance Optimizations & Advanced UI | ~120,000 | 4-5 days |
+| [Phase 5](Phase-5.md) | CI/CD Pipeline | ~100,000 | 2-3 days |
 
-**Total Estimated Tokens**: ~200,000 across 2 implementation phases
+**Total Estimated Tokens:** ~520,000
+**Total Estimated Duration:** 2-3 weeks
 
-### Phase 1 Sections:
-- **Section 1**: Infrastructure Foundation (Tasks 1-8)
-- **Section 2**: Model Registry & Intelligent Routing (Tasks 9-15)
-- **Section 3**: Async Job Management & Parallel Processing (Tasks 16-23)
+**Note on Phase Ordering:** Phase 3 (Production Deployment) intentionally comes before Phase 4 (Performance Optimization). This is because Phase 3 establishes performance baselines (Lambda cold starts, Lighthouse scores, bundle sizes) by deploying to staging and running benchmarks. Phase 4 then uses these baselines to measure optimization improvements. This ensures we have concrete before/after metrics for all performance work.
 
-### Phase 2 Sections:
-- **Section 1**: Frontend Foundation - Vite React Setup
-- **Section 2**: Core Image Generation UI
-- **Section 3**: Gallery & Advanced Features
-- **Section 4**: Integration Testing & Documentation
+## Implementation Guidelines
 
-## Implementation Approach
+### Commit Strategy
+- Use conventional commits format: `type(scope): description`
+- Types: `feat`, `fix`, `test`, `docs`, `refactor`, `perf`, `ci`, `chore`
+- Make atomic commits (one logical change per commit)
+- Commit after completing each task verification checklist
+- Push to branch `claude/design-feature-spec-011NhrPACav4g4n45FuCMD9n` regularly
 
-This plan is organized into **2 major implementation phases**, each designed to fit within a ~100,000 token context window for optimal agent/engineer workflow:
+### Testing Philosophy
+- Write tests before or alongside implementation (TDD approach)
+- All new features require corresponding tests
+- Maintain or improve code coverage with each change
+- Tests should be fast, isolated, and deterministic
 
-### Phase 0: Architecture & Design Foundation
-Read this first to understand all architectural decisions, design patterns, and conventions.
+### Documentation Requirements
+- Update relevant README files when changing functionality
+- Document all new environment variables
+- Add inline comments for complex logic
+- Update PRODUCTION_CHECKLIST.md with new deployment steps
 
-### Phase 1: Complete Backend (~100K tokens)
-Build the entire AWS serverless backend in one cohesive phase:
-- Infrastructure (SAM, S3, CloudFront, API Gateway)
-- Dynamic model registry with intelligent routing
-- All 9+ provider handlers (OpenAI, AWS Bedrock, Google, Stability, BFL, Recraft, Generic)
-- Async job management with parallel execution
-- Rate limiting, content moderation, and image storage
-- Complete API implementation and integration testing
-
-### Phase 2: Complete Frontend & Testing (~100K tokens)
-Build the entire React frontend and perform final testing:
-- Vite React foundation and API client
-- Complete UI (prompt input, image grid, loading states)
-- Gallery browser and advanced features
-- Mobile optimizations and accessibility
-- End-to-end testing, security review, and production deployment
+### Public Repository Considerations
+- Never commit secrets, API keys, or credentials
+- Use `.env.example` files with placeholder values
+- Provide clear setup instructions for external contributors
+- Make deployment process as automated as possible
+- Use GitHub Secrets for CI/CD credentials (document required secrets)
 
 ## Navigation
 
-- **Start Here**: [Phase 0 - Architecture & Design Decisions](Phase-0.md)
-- **Backend Implementation**: [Phase 1 - Complete Backend](Phase-1.md)
-- **Frontend Implementation**: [Phase 2 - Complete Frontend & Testing](Phase-2.md)
+- **[Phase 0: Architecture & Design Decisions](Phase-0.md)** - Review this first for foundational context
+- **[Phase 1: Testing Foundation](Phase-1.md)** - Vitest setup, frontend/backend test coverage
+- **[Phase 2: Error Handling & Resilience](Phase-2.md)** - Error boundaries, logging, retry logic
+- **[Phase 3: Production Deployment & Verification](Phase-3.md)** - CloudFormation improvements, deployment automation, benchmarking
+- **[Phase 4: Performance Optimizations & Advanced UI](Phase-4.md)** - Code splitting, UI features, optimization
+- **[Phase 5: CI/CD Pipeline](Phase-5.md)** - GitHub Actions, automated testing and deployment
 
-## Quick Start After Reading Plan
+## Getting Started
 
-Once you've reviewed all phases:
+1. Read Phase 0 completely to understand architectural decisions
+2. Ensure all prerequisites are met
+3. Create a feature branch from `claude/design-feature-spec-011NhrPACav4g4n45FuCMD9n`
+4. Start with Phase 1, completing all tasks in order
+5. Verify each phase before moving to the next
+6. Commit and push regularly
 
-1. Create new Git repository: `pixel-prompt-complete`
-2. Begin with Phase 1: Backend infrastructure
-3. Follow phases sequentially - each builds on previous work
-4. Test thoroughly at each phase verification checkpoint
-5. Commit frequently with conventional commit messages
+## Success Criteria
 
-## Notes for Engineers
-
-- This plan is designed for engineers with zero context on the existing codebase
-- Each phase is self-contained within ~100k token context window
-- Do not skip phases - dependencies are clearly marked
-- Follow the verification checklists before moving to next phase
-- Refer to existing `pixel-prompt-js` and `pixel-prompt-lambda` submodules for reference implementations
-- Ask clarifying questions if any step is ambiguous
-
-## Support & References
-
-- **Existing Codebases** (in parent repo):
-  - `/pixel-prompt-js/` - React Native frontend reference
-  - `/pixel-prompt-lambda/` - Python Lambda handlers reference
-- **AWS SAM Documentation**: https://docs.aws.amazon.com/serverless-application-model/
-- **Vite Documentation**: https://vitejs.dev/
-- **React Documentation**: https://react.dev/
+The implementation is complete when:
+- [ ] All tests pass with 70%+ coverage on critical paths
+- [ ] Frontend has comprehensive component and integration tests
+- [ ] Error boundaries prevent white screen crashes
+- [ ] CloudWatch logging captures all errors with correlation IDs
+- [ ] Deployment can be completed by a new user in under 30 minutes
+- [ ] PRODUCTION_CHECKLIST.md fully executed on staging environment
+- [ ] Performance benchmarks documented in PERFORMANCE.md
+- [ ] Load testing shows system handles 100 concurrent users
+- [ ] All 6 advanced UI features implemented and tested
+- [ ] CI/CD pipeline runs tests and deploys on every PR
+- [ ] Security scanning passes (npm audit, bandit)
+- [ ] All documentation updated and accurate

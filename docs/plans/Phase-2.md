@@ -1,2930 +1,874 @@
-# Phase 2: Complete Frontend Implementation & Testing
+# Phase 2: Error Handling & Resilience
 
-This phase combines all frontend work: Vite React foundation, core image generation UI, gallery features, advanced UI polish, and comprehensive testing. Complete Phase 1 (Backend) before starting this phase.
+## Phase Goal
 
-**Estimated Tokens**: ~100,000
+Implement comprehensive error handling across frontend and backend to prevent user-facing failures, provide actionable error messages, and enable effective debugging through structured logging with correlation IDs. This phase adds React Error Boundaries, CloudWatch logging for frontend errors, retry logic for S3 operations, and request tracing throughout the system.
 
----
+**Success Criteria:**
+- React Error Boundaries prevent white screen crashes
+- All frontend errors logged to CloudWatch via backend endpoint
+- Correlation IDs trace requests from frontend through backend
+- S3 operations retry with exponential backoff
+- User-facing error messages are clear and actionable
+- Error logging tested and verified in staging environment
 
-## Section 1: Frontend Foundation - Vite React Setup
-
-### Section Goal
-
-Create the foundational Vite React application with project structure, API client, routing, state management, and core UI components. This phase establishes the development environment and basic architecture for the frontend.
-
-**Success Criteria**:
-- Vite React app runs locally (`npm run dev`)
-- API client successfully communicates with Lambda backend
-- Environment variable configuration works
-- Basic component structure is established
-- State management pattern is defined
-- Development build and production build both work
-- CSS/styling approach is chosen and configured
-
-**Estimated Tokens**: ~20,000
+**Estimated Tokens:** ~90,000
 
 ---
 
-### Prerequisites
+## Prerequisites
 
-- Node.js 18+ installed
-- npm or yarn package manager
-- Backend deployed from Phase 1
-- API Gateway endpoint URL from backend deployment
-- Basic understanding of React hooks and components
-- Familiarity with Vite build tool
+- Phase 0 reviewed (error handling patterns documented)
+- Phase 1 complete (tests established to verify error handling)
+- Backend deployed to AWS (for CloudWatch logging)
 
 ---
 
-### Tasks
+## Tasks
 
-### Task 1: Vite Project Initialization
+### Task 1: Backend Logging Endpoint
 
-**Goal**: Create new Vite React project with proper configuration
+**Goal:** Create new `/log` API endpoint that accepts frontend error logs and writes them to CloudWatch Logs with structured JSON format, enabling centralized error tracking.
 
-**Files to Create**:
-- `/frontend/` - Project directory
-- `/frontend/vite.config.js` - Vite configuration
-- `/frontend/package.json` - Dependencies
-- `/frontend/.env.example` - Environment variable template
+**Files to Modify/Create:**
+- `backend/src/api/log.py` - New logging endpoint
+- `backend/src/lambda_function.py` - Add route for `/log`
+- `backend/src/utils/logger.py` - Structured logging utility
+- `backend/tests/unit/test_log_endpoint.py` - Unit tests
 
-**Prerequisites**: Node.js installed
+**Prerequisites:**
+- None (first task in phase)
 
-**Implementation Steps**:
+**Implementation Steps:**
 
-1. Navigate to `/frontend` directory
-2. Initialize Vite project:
-   ```bash
-   npm create vite@latest . -- --template react
-   ```
-   - Choose React template
-   - Choose JavaScript (not TypeScript for simplicity)
-3. Review generated files:
-   - `index.html` - Entry HTML
-   - `src/main.jsx` - Entry JavaScript
-   - `src/App.jsx` - Root component
-   - `vite.config.js` - Build configuration
-4. Install dependencies: `npm install`
-5. Create `.env.example` file:
-   ```bash
-   VITE_API_ENDPOINT=https://your-api-endpoint.execute-api.us-west-2.amazonaws.com
-   ```
-6. Update `.gitignore`:
-   - Add `.env`, `.env.local`
-   - Ensure `node_modules/`, `dist/` are ignored
-7. Configure `vite.config.js`:
-   - Set port to 3000 (or your preference)
-   - Configure proxy if needed for CORS during development
-   - Enable source maps for debugging
+1. **Create Structured Logging Utility**
+   - Create `logger.py` with function to format log entries as JSON
+   - Include fields: timestamp, level, message, correlationId, metadata
+   - Use Python's `logging` module for CloudWatch integration
+   - Support different log levels (ERROR, WARNING, INFO, DEBUG)
 
-**Verification Checklist**:
-- [ ] `npm run dev` starts dev server successfully
-- [ ] Can access app in browser at http://localhost:3000
-- [ ] Hot module replacement works (edit file, see changes)
-- [ ] `npm run build` produces production bundle in `dist/`
-- [ ] `.env.example` documents required environment variables
+2. **Implement Log Endpoint**
+   - Create POST `/log` endpoint in `log.py`
+   - Accept JSON body with: level, message, correlationId, stack, metadata
+   - Validate input (required fields, log level enum)
+   - Write to CloudWatch using structured logger
+   - Return 200 OK on success, 400 on invalid input
 
-**Testing Instructions**:
-- Run dev server: `npm run dev`
-- Make change to `App.jsx`, verify HMR updates page
-- Build production: `npm run build`
-- Preview build: `npm run preview`
+3. **Add CORS Support**
+   - Ensure `/log` endpoint has CORS headers (same as other endpoints)
+   - Allow POST method from frontend origin
+   - Handle preflight OPTIONS requests
 
-**Commit Message Template**:
+4. **Add Route to Lambda Handler**
+   - Update `lambda_function.py` to route `/log` to new handler
+   - Extract correlation ID from headers (X-Correlation-ID)
+   - Pass correlation ID to logging function
+
+5. **Add Rate Limiting**
+   - Apply rate limiting to `/log` endpoint (prevent log spam attacks)
+   - Lower limit than generate endpoint (e.g., 100 logs/hour per IP)
+   - Return 429 if limit exceeded
+
+6. **Write Unit Tests**
+   - Test successful log writing
+   - Test validation (missing fields, invalid log level)
+   - Test correlation ID extraction
+   - Test rate limiting
+   - Mock CloudWatch logging to avoid actual writes
+
+**Verification Checklist:**
+- [ ] POST /log returns 200 with valid payload
+- [ ] Logs appear in CloudWatch Logs console
+- [ ] Correlation ID included in CloudWatch log entries
+- [ ] Invalid requests return 400 with error message
+- [ ] Rate limiting enforced (429 after limit)
+- [ ] Unit tests pass for all scenarios
+
+**Testing Instructions:**
+```bash
+# Unit tests
+pytest tests/unit/test_log_endpoint.py -v
+
+# Manual test (requires deployed API)
+curl -X POST $API_ENDPOINT/log \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: test-123" \
+  -d '{"level":"ERROR","message":"Test error","stack":"Error: test\n  at..."}'
+
+# Check CloudWatch Logs in AWS console
+# Should see structured JSON log entry
 ```
-chore(frontend): initialize Vite React project
 
-- Create Vite project with React template
-- Configure vite.config.js with dev server settings
-- Add .env.example for environment variables
-- Update .gitignore for Node.js and Vite
+**Commit Message Template:**
+```
+feat(backend): add /log endpoint for frontend error logging
+
+- Create structured logging utility with JSON formatting
+- Implement POST /log endpoint with validation
+- Add correlation ID extraction from headers
+- Apply rate limiting to prevent log spam
+- Write to CloudWatch Logs with structured format
+- Add unit tests for logging endpoint
 ```
 
-**Estimated Tokens**: ~2,000
+**Estimated Tokens:** ~12,000
 
 ---
 
-### Task 2: Project Structure & Organization
+### Task 2: Frontend Error Logging Utility
 
-**Goal**: Establish organized directory structure and file organization
+**Goal:** Create frontend utility to send errors to backend `/log` endpoint, including automatic correlation ID generation and error serialization.
 
-**Files to Create**:
-- Directory structure under `/frontend/src/`
-- README.md for frontend development guide
+**Files to Modify/Create:**
+- `frontend/src/utils/logger.js` - Error logging client
+- `frontend/src/utils/correlation.js` - UUID generation
+- `frontend/src/__tests__/utils/logger.test.js` - Unit tests
 
-**Prerequisites**: Task 1 complete
+**Prerequisites:**
+- Task 1 complete (backend logging endpoint exists)
 
-**Implementation Steps**:
+**Implementation Steps:**
 
-1. Create directory structure:
-   ```
-   frontend/src/
-   ├── api/              # API client and fetch utilities
-   ├── components/       # Reusable React components
-   │   ├── common/       # Generic components (buttons, inputs)
-   │   ├── gallery/      # Gallery-related components
-   │   └── generation/   # Image generation components
-   ├── hooks/            # Custom React hooks
-   ├── utils/            # Helper functions
-   ├── assets/           # Images, fonts, sounds
-   │   ├── images/
-   │   ├── fonts/
-   │   └── sounds/
-   ├── styles/           # CSS files or styled-components
-   ├── App.jsx           # Root component
-   └── main.jsx          # Entry point
-   ```
+1. **Create Correlation ID Utility**
+   - Install `uuid` package: `npm install uuid`
+   - Create function to generate UUIDv4
+   - Store correlation ID in module scope for request batching
+   - Create function to get current correlation ID
 
-2. Create placeholder files in each directory:
-   - `api/.gitkeep`
-   - `components/.gitkeep`
-   - `hooks/.gitkeep`
-   - etc.
+2. **Create Error Logging Client**
+   - Create `logError()` function that sends to `/log` endpoint
+   - Accept parameters: error object, context, correlation ID (optional)
+   - Serialize error: message, stack trace, component name, user agent
+   - Generate correlation ID if not provided
+   - Send POST request to backend `/log` endpoint
+   - Handle network failures gracefully (don't throw on logging failure)
 
-3. Create `frontend/README.md`:
-   - Development setup instructions
-   - Available npm scripts
-   - Environment variable configuration
-   - Component organization guidelines
-   - Build and deployment instructions
+3. **Add Log Levels**
+   - Support ERROR, WARNING, INFO levels
+   - Create separate functions: `logError()`, `logWarning()`, `logInfo()`
+   - Default to ERROR for caught exceptions
 
-4. Define coding conventions:
-   - Component naming (PascalCase for components)
-   - File naming (match component name)
-   - Props destructuring pattern
-   - Hook naming (use prefix for custom hooks)
+4. **Add Metadata Support**
+   - Allow passing additional context (component name, user action, props)
+   - Include browser info (user agent, viewport size)
+   - Include app state (current route, user session info if applicable)
 
-**Verification Checklist**:
-- [ ] Directory structure is created
-- [ ] README.md documents development workflow
-- [ ] Guidelines for code organization are clear
-- [ ] All directories are committed (use .gitkeep if empty)
+5. **Implement Debouncing**
+   - Prevent duplicate error logs for same error (within 1 minute)
+   - Use error message + stack hash as deduplication key
+   - Batch logs if multiple errors occur rapidly (send every 5 seconds)
 
-**Testing Instructions**:
-- Navigate through directory structure, verify it's logical
-- Review README.md for completeness
-- Try creating a test component in each directory
+6. **Write Unit Tests**
+   - Test correlation ID generation
+   - Test error serialization (stack trace extraction)
+   - Test POST request formatting
+   - Test network error handling (logging failure doesn't crash app)
+   - Test deduplication (same error logged once)
+   - Mock fetch calls with Vitest
 
-**Commit Message Template**:
-```
-chore(frontend): establish project structure and conventions
+**Verification Checklist:**
+- [ ] logError() sends POST to /log endpoint
+- [ ] Correlation ID generated and included in request
+- [ ] Error stack trace properly serialized
+- [ ] Network failures handled gracefully (no console errors)
+- [ ] Duplicate errors deduplicated within 1 minute
+- [ ] Unit tests pass for all scenarios
 
-- Create organized directory structure
-- Add README.md with development guide
-- Define coding conventions for components
-- Add .gitkeep files for empty directories
+**Testing Instructions:**
+```bash
+npm test logger
+npm test correlation
+
+# Integration test (requires running backend)
+# Manually trigger error in frontend and verify CloudWatch log
 ```
 
-**Estimated Tokens**: ~2,000
+**Commit Message Template:**
+```
+feat(frontend): add error logging utility with CloudWatch integration
+
+- Create UUID correlation ID generator
+- Implement error logging client for /log endpoint
+- Serialize error messages and stack traces
+- Add deduplication to prevent log spam
+- Handle network failures gracefully
+- Add unit tests for logging utility
+```
+
+**Estimated Tokens:** ~10,000
 
 ---
 
-### Task 3: API Client Module
+### Task 3: React Error Boundaries
 
-**Goal**: Create robust API client for communicating with Lambda backend
+**Goal:** Implement React Error Boundary components to catch rendering errors, prevent white screen crashes, and display user-friendly fallback UI with error logging.
 
-**Files to Create**:
-- `/frontend/src/api/client.js` - Main API client
-- `/frontend/src/api/config.js` - API configuration
+**Files to Modify/Create:**
+- `frontend/src/components/features/errors/ErrorBoundary.jsx`
+- `frontend/src/components/features/errors/ErrorFallback.jsx`
+- `frontend/src/App.jsx` - Wrap sections with boundaries
+- `frontend/src/__tests__/components/ErrorBoundary.test.jsx`
 
-**Prerequisites**: Task 2 complete
+**Prerequisites:**
+- Task 2 complete (error logging utility exists)
 
-**Implementation Steps**:
+**Implementation Steps:**
 
-1. Create `api/config.js`:
-   - Load `VITE_API_ENDPOINT` from environment
-   - Export API base URL
-   - Define API routes as constants
+1. **Create ErrorBoundary Component**
+   - Implement class component with `componentDidCatch` lifecycle
+   - Capture error and error info (component stack)
+   - Log error to CloudWatch using logging utility from Task 2
+   - Update state to trigger fallback UI
+   - Include correlation ID in error log
+   - Support reset functionality (clear error state)
 
-2. Create `api/client.js` with methods:
-   - `generateImages(prompt, params)` → POST /generate
-   - `getJobStatus(jobId)` → GET /status/{jobId}
-   - `enhancePrompt(prompt)` → POST /enhance
+2. **Create ErrorFallback Component**
+   - Design user-friendly error message ("Something went wrong")
+   - Include "Refresh Page" button to reload app
+   - Include "Go Home" button to reset app state
+   - Optionally show error details in development mode (not production)
+   - Match app's visual design (use same CSS modules)
 
-3. Implement fetch wrapper with error handling:
-   ```javascript
-   async function apiFetch(endpoint, options = {}) {
-     try {
-       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-         ...options,
-         headers: {
-           'Content-Type': 'application/json',
-           ...options.headers
-         }
-       });
+3. **Add Error Boundaries to App**
+   - Wrap GenerationPanel in separate boundary
+   - Wrap GalleryBrowser in separate boundary
+   - Keep Header/Footer outside boundaries (always visible)
+   - This ensures one section crashing doesn't break entire app
 
-       if (!response.ok) {
-         // Handle HTTP errors
-         const error = await response.json();
-         throw new Error(error.message || `HTTP ${response.status}`);
-       }
+4. **Add Error Boundary Props**
+   - Support `fallback` prop for custom fallback UI
+   - Support `onError` callback for custom error handling
+   - Support `resetKeys` prop to auto-reset when dependencies change
 
-       return await response.json();
-     } catch (error) {
-       // Handle network errors
-       console.error('API request failed:', error);
-       throw error;
-     }
-   }
-   ```
+5. **Test Error Boundary**
+   - Create test component that throws error on render
+   - Verify ErrorBoundary catches error and shows fallback
+   - Verify error logged to CloudWatch (mock logging utility)
+   - Verify reset functionality clears error state
+   - Test with different error types (render error, lifecycle error)
 
-4. Implement each API method:
-   - `generateImages()`: POST request with prompt and parameters
-   - `getJobStatus()`: GET request with job ID in path
-   - `enhancePrompt()`: POST request with prompt
+6. **Document Usage**
+   - Add inline comments explaining error boundary placement
+   - Document when to use multiple boundaries vs. single boundary
+   - Note limitations (doesn't catch event handler errors)
 
-5. Add request timeout (30 seconds):
-   - Use AbortController for timeout
-   - Throw timeout error if exceeded
+**Verification Checklist:**
+- [ ] ErrorBoundary catches render errors
+- [ ] Fallback UI displays with friendly message
+- [ ] Error logged to CloudWatch with stack trace
+- [ ] Refresh button reloads page successfully
+- [ ] Multiple boundaries isolate errors (one crash doesn't break all)
+- [ ] Tests pass for error catching and logging
 
-6. Add retry logic for transient errors:
-   - Retry 3 times with exponential backoff (1s, 2s, 4s)
-   - Only retry on network errors, not HTTP errors
+**Testing Instructions:**
+```bash
+npm test ErrorBoundary
 
-**Verification Checklist**:
-- [ ] API client loads endpoint from environment variable
-- [ ] generateImages() successfully calls backend
-- [ ] getJobStatus() retrieves job status
-- [ ] enhancePrompt() calls enhancement endpoint
-- [ ] Error handling works (network errors, HTTP errors)
-- [ ] Timeout prevents indefinite waiting
-- [ ] Retry logic helps with transient failures
-
-**Testing Instructions**:
-- Unit test each method with fetch mocked
-- Integration test with real backend:
-  ```javascript
-  import { generateImages, getJobStatus } from './api/client';
-
-  const result = await generateImages('test prompt', {steps: 25});
-  console.log('Job ID:', result.jobId);
-
-  const status = await getJobStatus(result.jobId);
-  console.log('Status:', status);
-  ```
-- Test error scenarios (invalid endpoint, network down)
-- Test timeout (mock slow response)
-
-**Commit Message Template**:
-```
-feat(frontend): implement API client for backend communication
-
-- Create apiFetch wrapper with error handling
-- Implement generateImages, getJobStatus, enhancePrompt methods
-- Add request timeout (30s) with AbortController
-- Add retry logic for transient errors (3 retries)
+# Manual test: temporarily add throw in component
+# Verify fallback UI appears and error logged to CloudWatch
 ```
 
-**Estimated Tokens**: ~4,000
+**Commit Message Template:**
+```
+feat(frontend): implement React Error Boundaries
+
+- Create ErrorBoundary class component with error logging
+- Create ErrorFallback with user-friendly UI
+- Wrap GenerationPanel and GalleryBrowser independently
+- Log errors to CloudWatch with correlation IDs
+- Add reset functionality to recover from errors
+- Add tests for error catching and fallback UI
+```
+
+**Estimated Tokens:** ~12,000
 
 ---
 
-### Task 4: Custom Hooks - Job Polling
+### Task 4: Correlation IDs Across Request Chain
 
-**Goal**: Create React hook for polling job status
+**Goal:** Implement end-to-end request tracing by generating correlation IDs in frontend, passing through API Gateway, extracting in Lambda, and including in all CloudWatch logs.
 
-**Files to Create**:
-- `/frontend/src/hooks/useJobPolling.js` - Job polling hook
+**Files to Modify/Create:**
+- `frontend/src/api/client.js` - Update to include correlation ID header
+- `backend/src/lambda_function.py` - Extract and propagate correlation ID
+- `backend/src/utils/logger.py` - Include correlation ID in all logs
+- `backend/src/models/handlers.py` - Pass correlation ID to model handlers
+- `backend/tests/integration/test_correlation_ids.py` - Integration test
 
-**Prerequisites**: Task 3 complete
+**Prerequisites:**
+- Task 1 and 2 complete (logging infrastructure exists)
 
-**Implementation Steps**:
+**Implementation Steps:**
 
-1. Create `useJobPolling.js` custom hook:
-   ```javascript
-   function useJobPolling(jobId, interval = 2000) {
-     const [jobStatus, setJobStatus] = useState(null);
-     const [isPolling, setIsPolling] = useState(false);
-     const [error, setError] = useState(null);
+1. **Update Frontend API Client**
+   - Generate correlation ID for each API request (generate, status, enhance)
+   - Add `X-Correlation-ID` header to all fetch calls
+   - Store correlation ID in component state or context for later use
+   - Include correlation ID in error logs
 
-     useEffect(() => {
-       // Polling logic
-     }, [jobId, interval]);
+2. **Extract Correlation ID in Lambda**
+   - Update `lambda_function.py` handler to extract `X-Correlation-ID` header
+   - Store in request context or thread-local storage
+   - Generate new UUID if header missing (for direct API Gateway calls)
+   - Pass to all downstream functions
 
-     return { jobStatus, isPolling, error };
-   }
-   ```
+3. **Update Structured Logger**
+   - Modify `logger.py` to accept correlation ID parameter
+   - Include correlation ID in all log entries
+   - Create wrapper: `log_with_correlation(level, message, correlation_id, **kwargs)`
 
-2. Implement polling logic:
-   - Start polling when jobId is provided
-   - Call getJobStatus() every `interval` milliseconds
-   - Update jobStatus state with response
-   - Stop polling when job status is "completed", "partial", or "failed"
-   - Stop polling after 5 minutes (timeout)
+4. **Propagate Through Backend**
+   - Update job manager to log with correlation ID
+   - Update model handlers to log with correlation ID
+   - Update storage operations to log with correlation ID
+   - Update error handlers to log with correlation ID
 
-3. Implement cleanup:
-   - Clear interval on component unmount
-   - Clear interval when polling stops
-   - Cancel in-flight request when component unmounts
+5. **Update Integration Tests**
+   - Send `X-Correlation-ID` header in test requests
+   - Verify correlation ID appears in response (if applicable)
+   - Verify correlation ID in CloudWatch logs (mock or check actual logs)
 
-4. Handle errors:
-   - Exponential backoff on errors (2s → 4s → 8s)
-   - Stop polling after 5 consecutive errors
-   - Set error state for UI to display
+6. **Document Tracing**
+   - Add TROUBLESHOOTING.md section on using correlation IDs
+   - Explain how to search CloudWatch Logs by correlation ID
+   - Provide example CloudWatch Insights query
 
-5. Add polling state:
-   - `isPolling`: Boolean indicating if currently polling
-   - `jobStatus`: Latest job status object
-   - `error`: Error message if polling failed
+**Verification Checklist:**
+- [ ] Frontend generates and sends correlation ID in all requests
+- [ ] Backend extracts correlation ID from headers
+- [ ] All CloudWatch logs include correlation ID field
+- [ ] Can trace single user request through entire system
+- [ ] Integration tests verify correlation ID propagation
 
-**Verification Checklist**:
-- [ ] Hook starts polling when jobId is provided
-- [ ] Hook stops polling when job is complete
-- [ ] Hook stops polling after timeout (5 minutes)
-- [ ] Hook handles errors with backoff
-- [ ] Hook cleans up on unmount (no memory leaks)
+**Testing Instructions:**
+```bash
+# Integration test
+pytest tests/integration/test_correlation_ids.py -v
 
-**Testing Instructions**:
-- Test in component:
-  ```javascript
-  function TestComponent() {
-    const { jobStatus, isPolling, error } = useJobPolling('test-job-id');
-
-    return (
-      <div>
-        <p>Polling: {isPolling ? 'Yes' : 'No'}</p>
-        <p>Status: {jobStatus?.status}</p>
-        <p>Error: {error}</p>
-      </div>
-    );
-  }
-  ```
-- Verify polling stops when job completes
-- Verify cleanup (unmount component, check no more requests)
-- Monitor network tab in browser
-
-**Commit Message Template**:
-```
-feat(frontend): create useJobPolling custom hook
-
-- Implement polling logic with 2-second interval
-- Stop polling on completion or 5-minute timeout
-- Add exponential backoff for errors
-- Clean up on unmount to prevent memory leaks
+# Manual verification
+# 1. Generate image in frontend with browser DevTools open
+# 2. Copy X-Correlation-ID from Network tab
+# 3. Search CloudWatch Logs for that ID
+# 4. Verify all related logs appear (job creation, model execution, S3 upload)
 ```
 
-**Estimated Tokens**: ~3,000
+**Commit Message Template:**
+```
+feat: implement end-to-end correlation ID tracing
+
+- Generate correlation IDs in frontend API client
+- Extract correlation ID from headers in Lambda
+- Include correlation ID in all CloudWatch logs
+- Propagate through job manager and model handlers
+- Add integration tests for correlation ID flow
+- Document CloudWatch Insights queries for tracing
+```
+
+**Estimated Tokens:** ~15,000
 
 ---
 
-### Task 5: Styling Setup
+### Task 5: S3 Retry Logic with Exponential Backoff
 
-**Goal**: Choose and configure styling approach (CSS Modules or styled-components)
+**Goal:** Add automatic retry logic for S3 operations (upload, download) with exponential backoff to handle transient errors and improve reliability.
 
-**Files to Create/Modify**:
-- `/frontend/src/styles/` - Style files
-- `/frontend/src/App.jsx` - Update with styles
+**Files to Modify/Create:**
+- `backend/src/utils/retry.py` - Retry decorator
+- `backend/src/utils/storage.py` - Update S3 calls with retry
+- `backend/tests/unit/test_retry.py` - Unit tests
 
-**Prerequisites**: Task 4 complete
+**Prerequisites:**
+- Task 4 complete (correlation ID logging in place)
 
-**Implementation Steps**:
+**Implementation Steps:**
 
-1. Choose styling approach:
-   - **Option A**: CSS Modules (built into Vite, zero config)
-   - **Option B**: styled-components (requires dependency)
-   - Recommendation: CSS Modules for simplicity
+1. **Create Retry Decorator**
+   - Create `retry_with_backoff()` decorator function
+   - Accept parameters: max_retries (default 3), base_delay (default 1s)
+   - Implement exponential backoff: 1s, 2s, 4s
+   - Log each retry attempt with correlation ID
+   - Re-raise exception after max retries exhausted
 
-2. If using CSS Modules:
-   - Create `src/styles/App.module.css`
-   - Import in component: `import styles from './styles/App.module.css'`
-   - Use: `<div className={styles.container}></div>`
+2. **Identify Retryable Errors**
+   - Retry on transient S3 errors: 503 SlowDown, 500 InternalError
+   - Retry on network errors: connection timeout, read timeout
+   - Do NOT retry on permanent errors: 403 Forbidden, 404 NotFound
+   - Use boto3 exception classes: `ClientError`, `BotoCoreError`
 
-3. Create global styles:
-   - `src/styles/global.css`:
-     ```css
-     * {
-       margin: 0;
-       padding: 0;
-       box-sizing: border-box;
-     }
+3. **Apply Retry to S3 Upload**
+   - Decorate `upload_to_s3()` function in `storage.py`
+   - Log retry attempts with correlation ID and error details
+   - Update error messages to indicate retry count
+   - Ensure retry doesn't duplicate uploads (idempotent key)
 
-     body {
-       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-       background-color: #1a1a1a;
-       color: #ffffff;
-     }
+4. **Apply Retry to S3 Download**
+   - Decorate image download function (if exists)
+   - Apply same retry logic as upload
+   - Log retry attempts
 
-     #root {
-       min-height: 100vh;
+5. **Add Retry Metrics**
+   - Count retry attempts per request
+   - Log final success/failure with total retry count
+   - Include in job result metadata ("uploaded after 2 retries")
+
+6. **Write Unit Tests**
+   - Test successful operation (no retries needed)
+   - Test single retry (first fails, second succeeds)
+   - Test max retries exhausted (all 3 fail)
+   - Test exponential backoff timing (verify delays)
+   - Mock S3 client to simulate errors
+   - Test permanent errors not retried
+
+**Verification Checklist:**
+- [ ] S3 upload retries on transient errors
+- [ ] Exponential backoff implemented (1s, 2s, 4s)
+- [ ] Permanent errors fail immediately (no retries)
+- [ ] Retry attempts logged with correlation ID
+- [ ] Unit tests verify retry logic
+- [ ] Integration tests show improved reliability
+
+**Testing Instructions:**
+```bash
+pytest tests/unit/test_retry.py -v
+
+# Simulate transient error by temporarily making S3 unavailable
+# Verify retries occur and eventual success/failure logged
+```
+
+**Commit Message Template:**
+```
+feat(backend): add S3 retry logic with exponential backoff
+
+- Create retry decorator with configurable parameters
+- Implement exponential backoff (1s, 2s, 4s delays)
+- Apply to S3 upload and download operations
+- Log retry attempts with correlation IDs
+- Distinguish retryable vs permanent errors
+- Add unit tests for retry scenarios
+```
+
+**Estimated Tokens:** ~12,000
+
+---
+
+### Task 6: Improved User-Facing Error Messages
+
+**Goal:** Replace generic error messages with specific, actionable messages that guide users to resolve issues (rate limits, invalid input, API failures).
+
+**Files to Modify/Create:**
+- `frontend/src/utils/errorMessages.js` - Error message mapping
+- `frontend/src/components/common/ErrorMessage.jsx` - Reusable error component
+- `backend/src/utils/error_responses.py` - Standardized error responses
+
+**Prerequisites:**
+- Task 3 complete (error boundaries in place)
+
+**Implementation Steps:**
+
+1. **Create Error Message Mapping**
+   - Map HTTP status codes to user-friendly messages
+   - Map specific error codes to detailed instructions
+   - Examples:
+     - 400: "Invalid input. Please check your prompt and parameters."
+     - 429: "Rate limit exceeded. Please wait {X} minutes and try again."
+     - 500: "Server error. Please try again in a few minutes."
+     - Network error: "Connection failed. Please check your internet connection."
+
+2. **Create Error Message Component**
+   - Create reusable `ErrorMessage.jsx` component
+   - Accept props: errorCode, errorMessage, retry callback
+   - Display appropriate icon (⚠️ warning, ❌ error, ℹ️ info)
+   - Show actionable button ("Retry", "Go Back", "Contact Support")
+   - Style with CSS modules to match app design
+
+3. **Standardize Backend Error Responses**
+   - Create `error_responses.py` utility
+   - Define consistent error response structure:
+     ```python
+     {
+       "error": "RATE_LIMIT_EXCEEDED",
+       "message": "Rate limit exceeded",
+       "details": "You have made 51 requests today. Limit is 50 per day.",
+       "retryAfter": 3600  # seconds
      }
      ```
-   - Import in `main.jsx`
+   - Use across all endpoints (generate, status, enhance, log)
 
-4. Set up design tokens (CSS variables):
-   - Colors (primary, secondary, background, text)
-   - Spacing (small, medium, large)
-   - Border radius
-   - Shadows
-   - Store in `:root` in global.css
+4. **Add Rate Limit Details**
+   - Include retry-after information in 429 responses
+   - Calculate time until limit resets
+   - Return in human-readable format ("Try again in 45 minutes")
 
-5. Create utility classes:
-   - Flexbox utilities
-   - Spacing utilities
-   - Text alignment
+5. **Add Validation Details**
+   - For 400 errors, specify which field is invalid
+   - Examples: "Prompt is required", "Steps must be between 1 and 100"
+   - Return field name and constraint violated
 
-6. Copy assets from `pixel-prompt-js`:
-   - Fonts (Sigmar font)
-   - Images (placeholder, error images)
-   - Sounds (click, switch, swoosh)
+6. **Update Frontend Error Handling**
+   - Parse error responses from backend
+   - Extract error code and message
+   - Pass to ErrorMessage component
+   - Show retry button for retryable errors (429, 500, 503)
+   - Hide retry button for permanent errors (400, 404)
 
-**Verification Checklist**:
-- [ ] Styling approach is configured and working
-- [ ] Global styles are applied
-- [ ] Design tokens (CSS variables) are defined
-- [ ] Can create styled component successfully
-- [ ] Assets are copied and accessible
+7. **Write Tests**
+   - Test error message mapping (all status codes covered)
+   - Test ErrorMessage component rendering
+   - Test retry button functionality
+   - Test backend error response formatting
 
-**Testing Instructions**:
-- Create test component with styles
-- Verify styles are scoped (CSS Modules) or global (styled-components)
-- Check design tokens in browser DevTools
-- Import and use font/image assets
+**Verification Checklist:**
+- [ ] All error types have user-friendly messages
+- [ ] Rate limit errors show retry-after time
+- [ ] Validation errors specify which field is invalid
+- [ ] ErrorMessage component displays correctly
+- [ ] Retry button appears only for retryable errors
+- [ ] Tests verify error message formatting
 
-**Commit Message Template**:
-```
-feat(frontend): configure styling with CSS Modules
-
-- Set up CSS Modules for component styling
-- Create global styles with design tokens
-- Define color palette and spacing system
-- Copy assets from pixel-prompt-js (fonts, images, sounds)
-```
-
-**Estimated Tokens**: ~3,000
-
----
-
-### Task 6: Basic UI Layout
-
-**Goal**: Create main application layout and structure
-
-**Files to Create**:
-- `/frontend/src/App.jsx` - Main app component
-- `/frontend/src/components/common/Header.jsx` - Header component
-- `/frontend/src/components/common/Container.jsx` - Layout container
-
-**Prerequisites**: Task 5 complete
-
-**Implementation Steps**:
-
-1. Design app layout structure:
-   ```
-   ┌─────────────────────────────┐
-   │         Header              │
-   ├─────────────────────────────┤
-   │                             │
-   │    Main Content Area        │
-   │    (components go here)     │
-   │                             │
-   └─────────────────────────────┘
-   ```
-
-2. Create `Header.jsx`:
-   - Display "Pixel Prompt" title
-   - Show app tagline "Text-to-Image Variety Pack"
-   - Apply Sigmar font to title (matching pixel-prompt-js)
-   - Responsive design (different layout for mobile/desktop)
-
-3. Create `Container.jsx`:
-   - Wrapper component for main content
-   - Max width (e.g., 1400px on desktop)
-   - Centered on page
-   - Padding for mobile
-
-4. Update `App.jsx`:
-   - Import Header and Container
-   - Set up basic layout structure
-   - Add placeholder for main content
-   - Apply background styling (dark theme matching pixel-prompt-js)
-
-5. Make layout responsive:
-   - Mobile: Single column, full width
-   - Tablet: Adjust padding and sizing
-   - Desktop: Max width container, centered
-
-**Verification Checklist**:
-- [ ] Header displays correctly
-- [ ] Layout is centered on desktop
-- [ ] Layout is responsive (test mobile, tablet, desktop)
-- [ ] Background and colors match design
-- [ ] Sigmar font is applied to header
-
-**Testing Instructions**:
-- View in browser at different window sizes
-- Use browser DevTools responsive mode
-- Verify layout doesn't break at any width
-- Check font rendering
-
-**Commit Message Template**:
-```
-feat(frontend): create main application layout
-
-- Add Header component with Pixel Prompt branding
-- Create Container component for responsive layout
-- Update App.jsx with layout structure
-- Implement responsive design for mobile/desktop
-```
-
-**Estimated Tokens**: ~3,000
-
----
-
-### Task 7: State Management Setup
-
-**Goal**: Define state management pattern using React Context
-
-**Files to Create**:
-- `/frontend/src/context/AppContext.jsx` - Application context
-
-**Prerequisites**: Task 6 complete
-
-**Implementation Steps**:
-
-1. Create `AppContext.jsx`:
-   ```javascript
-   import { createContext, useContext, useState } from 'react';
-
-   const AppContext = createContext();
-
-   export function AppProvider({ children }) {
-     // Global state
-     const [currentJob, setCurrentJob] = useState(null);
-     const [prompt, setPrompt] = useState('');
-     const [parameters, setParameters] = useState({
-       steps: 28,
-       guidance: 5,
-       control: 1.0
-     });
-     const [generatedImages, setGeneratedImages] = useState(Array(9).fill(null));
-
-     const value = {
-       currentJob, setCurrentJob,
-       prompt, setPrompt,
-       parameters, setParameters,
-       generatedImages, setGeneratedImages
-     };
-
-     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
-   }
-
-   export function useApp() {
-     const context = useContext(AppContext);
-     if (!context) {
-       throw new Error('useApp must be used within AppProvider');
-     }
-     return context;
-   }
-   ```
-
-2. Wrap App with provider in `main.jsx`:
-   ```javascript
-   import { AppProvider } from './context/AppContext';
-
-   ReactDOM.createRoot(document.getElementById('root')).render(
-     <React.StrictMode>
-       <AppProvider>
-         <App />
-       </AppProvider>
-     </React.StrictMode>
-   );
-   ```
-
-3. Define state structure:
-   - `currentJob`: {jobId, status, results} or null
-   - `prompt`: String
-   - `parameters`: {steps, guidance, control}
-   - `generatedImages`: Array of 9 image objects
-   - `selectedGallery`: Gallery folder name or null
-
-4. Create state update functions:
-   - `updateJobStatus(jobStatus)`: Update current job
-   - `resetGeneration()`: Clear current job and images
-   - `updateParameter(key, value)`: Update single parameter
-
-**Verification Checklist**:
-- [ ] AppContext is created and provides state
-- [ ] useApp hook works in components
-- [ ] State updates trigger re-renders
-- [ ] Error is thrown if hook used outside provider
-
-**Testing Instructions**:
-- Create test component that uses `useApp()`
-- Update state and verify UI updates
-- Check React DevTools for context provider
-- Verify no prop drilling needed for global state
-
-**Commit Message Template**:
-```
-feat(frontend): set up React Context for state management
-
-- Create AppContext with global state
-- Define state structure (job, prompt, parameters, images)
-- Add useApp hook for easy context access
-- Wrap App with AppProvider in main.jsx
-```
-
-**Estimated Tokens**: ~3,000
-
----
-
-## Phase Verification
-
-### Complete Phase Checklist
-
-Before moving to Section 2, verify:
-
-- [ ] Vite dev server runs successfully (`npm run dev`)
-- [ ] Production build works (`npm run build`)
-- [ ] API client can communicate with backend
-- [ ] Custom hooks work (useJobPolling)
-- [ ] Styling is configured and working
-- [ ] Main layout is responsive
-- [ ] State management with Context is functional
-- [ ] Assets (fonts, images, sounds) are accessible
-- [ ] Environment variables are documented and loaded
-
-### Integration Testing
-
+**Testing Instructions:**
 ```bash
-# Start dev server
-cd frontend
-npm run dev
+# Frontend component test
+npm test ErrorMessage
 
-# In browser console, test API client:
-import { generateImages } from './api/client';
-const result = await generateImages('test', {steps: 25});
-console.log(result);
+# Backend error response test
+pytest tests/unit/test_error_responses.py -v
 
-# Build production
-npm run build
-
-# Preview production build
-npm run preview
+# Manual test: trigger each error type
+# - Send empty prompt (400)
+# - Exceed rate limit (429)
+# - Invalid job ID (404)
+# Verify user-friendly messages displayed
 ```
 
-### Known Limitations
+**Commit Message Template:**
+```
+feat: improve user-facing error messages
 
-- No UI components built yet (Section 2)
-- No gallery functionality yet (Section 3)
-- No sound effects or animations yet (Section 3)
-- Placeholder content only
+- Create error message mapping for all status codes
+- Create reusable ErrorMessage component
+- Standardize backend error response format
+- Add retry-after details to rate limit errors
+- Add field-level details to validation errors
+- Show actionable buttons (Retry, Go Back)
+- Add tests for error message formatting
+```
+
+**Estimated Tokens:** ~14,000
 
 ---
 
-## Section 2: Core Image Generation UI
+### Task 7: Error Handling Documentation and Testing
 
-### Section Goal
+**Goal:** Document error handling architecture, create troubleshooting guide, and verify error handling works in staging environment.
 
-Build the core user interface for image generation including prompt input, parameter controls, generation button, image grid display, and real-time status updates. This phase creates the primary user workflow: enter prompt → adjust parameters → generate → view results.
+**Files to Modify/Create:**
+- `docs/ERROR_HANDLING.md` - Architecture documentation
+- `docs/TROUBLESHOOTING.md` - User troubleshooting guide
+- `backend/tests/integration/test_error_scenarios.py` - Error scenario tests
 
-**Success Criteria**:
-- User can enter prompts and adjust parameters (steps, guidance)
-- Generate button triggers backend API call
-- Loading states show progress for each model
-- Image grid displays 9 images in responsive layout
-- Images update in real-time as models complete
-- Error states display appropriately
-- UI matches design aesthetic of pixel-prompt-js
-- Responsive design works on mobile and desktop
+**Prerequisites:**
+- All previous tasks complete
 
-**Estimated Tokens**: ~35,000
+**Implementation Steps:**
 
----
+1. **Create Error Handling Architecture Doc**
+   - Document error flow: frontend → error boundary → logging → CloudWatch
+   - Explain correlation ID tracing
+   - Diagram error handling architecture
+   - List all error types and handling strategy
+   - Document retry logic and backoff strategy
 
-### Prerequisites
+2. **Create Troubleshooting Guide**
+   - **For Users:**
+     - Common errors and how to fix them
+     - Rate limit errors: wait and retry
+     - Network errors: check connection
+     - Invalid input: check prompt requirements
+   - **For Developers:**
+     - How to search CloudWatch Logs by correlation ID
+     - CloudWatch Insights query examples
+     - How to debug failed image generations
+     - How to interpret structured log entries
 
-- Section 1 complete (Vite app running, API client ready)
-- Backend deployed and accessible
-- Understanding of React hooks and state management
-- Reference to pixel-prompt-js components for UX patterns
+3. **Add CloudWatch Insights Queries**
+   - Query to find all logs for correlation ID
+   - Query to find all errors in last hour
+   - Query to find rate limit violations
+   - Query to find slowest image generations
+   - Include in TROUBLESHOOTING.md
 
----
+4. **Write Error Scenario Integration Tests**
+   - Test rate limit error (send 51 requests, verify 429)
+   - Test invalid input error (empty prompt, verify 400)
+   - Test not found error (invalid job ID, verify 404)
+   - Test network error simulation (timeout, verify retry)
+   - Test error logging (verify logs in CloudWatch)
 
-### Tasks
+5. **Update PRODUCTION_CHECKLIST.md**
+   - Add section: "Verify Error Handling"
+   - Test error boundaries (manually trigger error)
+   - Verify CloudWatch logs appear
+   - Test correlation ID tracing
+   - Verify user-friendly error messages
+   - Test retry logic (simulate S3 error)
 
-### Task 1: Prompt Input Component
+6. **Test in Dev/Local Environment**
+   - Deploy to dev environment (or use existing dev deployment) with error handling enabled
+   - Manually trigger each error type
+   - Verify error messages display correctly in frontend
+   - Verify CloudWatch logs contain correlation IDs (check AWS console for dev stack)
+   - Verify S3 retries work (simulate transient error if possible)
+   - Verify rate limiting enforced
+   - **Note:** Full staging verification will be done in Phase 3 after staging environment is set up
 
-**Goal**: Create prompt input field with clear button and character limit
+**Verification Checklist:**
+- [ ] ERROR_HANDLING.md documents architecture clearly
+- [ ] TROUBLESHOOTING.md provides actionable guidance
+- [ ] CloudWatch Insights queries work as documented
+- [ ] Integration tests cover all error scenarios
+- [ ] PRODUCTION_CHECKLIST.md updated with verification steps
+- [ ] Dev environment tests confirm error handling works (staging verification in Phase 3)
 
-**Files to Create**:
-- `/frontend/src/components/generation/PromptInput.jsx`
-- `/frontend/src/components/generation/PromptInput.module.css`
+**Testing Instructions:**
+```bash
+# Run error scenario tests
+pytest tests/integration/test_error_scenarios.py -v
 
-**Prerequisites**: Section 1 complete
+# Manual dev environment verification
+# 1. Deploy to dev (or use existing dev deployment)
+# 2. Test error boundaries (manually trigger error in component)
+# 3. Verify all error types work as expected
+# 4. Check CloudWatch Logs for dev stack for structured entries
 
-**Implementation Steps**:
-
-1. Create `PromptInput.jsx` component:
-   - Accept props: `value`, `onChange`, `onClear`, `maxLength`
-   - Render textarea for multi-line input
-   - Show character count: `{value.length} / {maxLength}`
-   - Include clear button (X icon)
-   - Placeholder text: "Describe the image you want to generate..."
-
-2. Implement clear functionality:
-   - Clear button calls `onClear()` prop
-   - Confirm before clearing if prompt is long (> 50 chars)
-
-3. Style the component:
-   - Match pixel-prompt-js aesthetic (dark theme, rounded corners)
-   - Textarea auto-grows with content
-   - Clear button positioned in top-right corner
-   - Focus state with border highlight
-   - Responsive: Full width on mobile, max-width on desktop
-
-4. Add keyboard shortcuts:
-   - Ctrl+Enter / Cmd+Enter: Trigger generation (bubble up event)
-   - Escape: Clear input
-
-5. Handle edge cases:
-   - Empty prompt → disable generate button
-   - Exceeding max length → prevent typing
-   - Copy/paste large text → truncate to max length
-
-**Verification Checklist**:
-- [ ] Component renders with placeholder text
-- [ ] Typing updates character count
-- [ ] Clear button empties input
-- [ ] Max length enforced
-- [ ] Styles match design aesthetic
-- [ ] Responsive on mobile and desktop
-- [ ] Keyboard shortcuts work
-
-**Testing Instructions**:
-- Type various prompts and verify character count
-- Test clear button with short and long prompts
-- Try to exceed max length (500 chars)
-- Test on mobile width (textarea should be full width)
-- Verify keyboard shortcuts
-
-**Commit Message Template**:
-```
-feat(frontend): create prompt input component
-
-- Add textarea with character count
-- Implement clear button with confirmation
-- Add keyboard shortcuts (Ctrl+Enter, Escape)
-- Style with dark theme aesthetic
-- Make responsive for mobile/desktop
+# NOTE: Comprehensive staging verification occurs in Phase 3
+# after staging environment is deployed
 ```
 
-**Estimated Tokens**: ~4,000
-
----
-
-### Task 2: Parameter Sliders Component
-
-**Goal**: Create sliders for adjusting generation parameters (steps, guidance)
-
-**Files to Create**:
-- `/frontend/src/components/generation/ParameterSliders.jsx`
-- `/frontend/src/components/generation/ParameterSliders.module.css`
-
-**Prerequisites**: Task 1 complete, reference `/pixel-prompt-js/components/Slider.js`
-
-**Implementation Steps**:
-
-1. Create `ParameterSliders.jsx` component:
-   - Accept props: `steps`, `guidance`, `onStepsChange`, `onGuidanceChange`
-   - Render two sliders with labels
-
-2. Implement Steps slider:
-   - Label: "Sampling Steps"
-   - Range: 3 to 50
-   - Default: 28
-   - Show current value next to label
-   - Tooltip explaining what steps do (optional)
-
-3. Implement Guidance slider:
-   - Label: "Guidance Scale"
-   - Range: 0 to 10
-   - Default: 5
-   - Show current value (with 1 decimal place)
-   - Tooltip explaining what guidance does (optional)
-
-4. Style sliders:
-   - Custom styled range input (not browser default)
-   - Filled track (shows progress)
-   - Large thumb for easy dragging
-   - Value display updates in real-time
-   - Mobile: Full width, larger touch targets
-
-5. Add snap behavior (optional):
-   - Steps: Snap to integers (no decimals)
-   - Guidance: Snap to 0.5 increments
-
-**Verification Checklist**:
-- [ ] Both sliders render with correct ranges
-- [ ] Value display updates as slider moves
-- [ ] onChange callbacks fire with correct values
-- [ ] Sliders look good (custom styled, not browser default)
-- [ ] Mobile-friendly (large touch targets)
-
-**Testing Instructions**:
-- Drag sliders and verify values update
-- Test min and max values
-- Verify callbacks receive correct values
-- Test on mobile (touch dragging)
-- Compare styling to pixel-prompt-js sliders
-
-**Commit Message Template**:
+**Commit Message Template:**
 ```
-feat(frontend): create parameter sliders component
+docs: add error handling and troubleshooting guides
 
-- Add Steps slider (3-50, default 28)
-- Add Guidance slider (0-10, default 5)
-- Custom styled sliders with filled track
-- Real-time value display
-- Mobile-optimized with large touch targets
+- Create ERROR_HANDLING.md with architecture overview
+- Create TROUBLESHOOTING.md with user and developer guides
+- Add CloudWatch Insights query examples
+- Write integration tests for error scenarios
+- Update PRODUCTION_CHECKLIST.md with error verification
+- Document correlation ID tracing workflow
 ```
 
-**Estimated Tokens**: ~4,000
-
----
-
-### Task 3: Generate Button Component
-
-**Goal**: Create main generation button with loading states
-
-**Files to Create**:
-- `/frontend/src/components/generation/GenerateButton.jsx`
-- `/frontend/src/components/generation/GenerateButton.module.css`
-
-**Prerequisites**: Task 2 complete
-
-**Implementation Steps**:
-
-1. Create `GenerateButton.jsx` component:
-   - Accept props: `onClick`, `isGenerating`, `disabled`, `label`
-   - Render button with dynamic text and state
-
-2. Implement button states:
-   - Default: "Generate Images" (idle)
-   - Generating: "Generating..." with spinner
-   - Disabled: Grayed out, not clickable
-   - Error: "Try Again" (after error)
-
-3. Add loading spinner:
-   - CSS-only spinner (rotating circle)
-   - Shown when `isGenerating` is true
-   - Positioned next to button text
-
-4. Style the button:
-   - Large, prominent button
-   - Gradient background (eye-catching)
-   - Hover and active states
-   - Disabled state (reduced opacity)
-   - Responsive: Full width on mobile, auto width on desktop
-
-5. Add click handling:
-   - Call `onClick()` prop when clicked
-   - Prevent click when disabled or generating
-   - Visual feedback (press effect)
-
-6. Accessibility:
-   - Proper aria-label
-   - Disabled attribute when not clickable
-   - Focus state (keyboard navigation)
-
-**Verification Checklist**:
-- [ ] Button renders with correct text
-- [ ] Loading spinner appears when generating
-- [ ] Disabled state prevents clicks
-- [ ] Click handler is called when clicked
-- [ ] Styles are visually appealing
-- [ ] Responsive design works
-- [ ] Accessible (keyboard navigation, screen readers)
-
-**Testing Instructions**:
-- Click button and verify onClick fires
-- Set isGenerating=true and verify spinner appears
-- Set disabled=true and verify button is not clickable
-- Test keyboard navigation (Tab to focus, Enter to click)
-- Test on mobile (button should be easy to tap)
-
-**Commit Message Template**:
-```
-feat(frontend): create generate button with loading states
-
-- Add button with idle, generating, and disabled states
-- Implement CSS spinner for loading indication
-- Style with gradient background and hover effects
-- Make responsive and accessible
-- Add keyboard navigation support
-```
-
-**Estimated Tokens**: ~3,500
-
----
-
-### Task 4: Image Grid Component
-
-**Goal**: Create responsive grid to display 9 generated images
-
-**Files to Create**:
-- `/frontend/src/components/generation/ImageGrid.jsx`
-- `/frontend/src/components/generation/ImageGrid.module.css`
-- `/frontend/src/components/generation/ImageCard.jsx`
-
-**Prerequisites**: Task 3 complete, reference `/pixel-prompt-js/components/NewImage.js`
-
-**Implementation Steps**:
-
-1. Create `ImageCard.jsx` component (individual image):
-   - Props: `image`, `model`, `status`, `onExpand`
-   - Render image or loading placeholder
-   - Show model name as label
-   - Display status (loading, completed, error)
-
-2. Implement loading states:
-   - Placeholder: Gray box with pulsing animation
-   - Loading: Spinner overlay
-   - Completed: Full image displayed
-   - Error: Error icon with message
-
-3. Create `ImageGrid.jsx` component (grid layout):
-   - Props: `images` (array of 9 image objects)
-   - Render 9 ImageCard components in grid
-   - Grid layout: 3x3 on desktop, 2x2 or 1x1 on mobile
-
-4. Style the grid:
-   - CSS Grid layout
-   - Equal-sized cells with aspect ratio 1:1
-   - Gap between images
-   - Responsive breakpoints:
-     - Mobile (< 600px): 2 columns
-     - Tablet (600-1000px): 3 columns
-     - Desktop (> 1000px): 3-4 columns
-
-5. Implement progressive loading:
-   - Initially show 9 placeholders
-   - As images complete, replace placeholders
-   - Smooth transition (fade in)
-
-6. Add image expansion (click to enlarge):
-   - Click image → show full-size modal
-   - Close button or click outside to dismiss
-   - Arrow keys to navigate between images
-
-**Verification Checklist**:
-- [ ] Grid displays 9 cells
-- [ ] Placeholder animation works
-- [ ] Images fade in when loaded
-- [ ] Model names are displayed correctly
-- [ ] Error states show error icon
-- [ ] Grid is responsive (different columns on mobile/desktop)
-- [ ] Click to expand works
-- [ ] Keyboard navigation works in expanded view
-
-**Testing Instructions**:
-- Render with mock data (9 loading states)
-- Simulate images completing one by one
-- Verify smooth transitions
-- Test on mobile (grid should adjust)
-- Click image to expand, verify modal works
-- Test error state (missing image)
-
-**Commit Message Template**:
-```
-feat(frontend): create image grid with progressive loading
-
-- Add ImageCard component for individual images
-- Create ImageGrid with responsive 3x3 layout
-- Implement loading placeholders with animation
-- Add fade-in effect as images load
-- Support click-to-expand functionality
-- Make responsive (2x2 mobile, 3x3 desktop)
-```
-
-**Estimated Tokens**: ~5,000
-
----
-
-### Task 5: Generation Workflow Integration
-
-**Goal**: Connect all components and implement end-to-end generation workflow
-
-**Files to Create/Modify**:
-- `/frontend/src/components/generation/GenerationPanel.jsx` - Main panel component
-- `/frontend/src/App.jsx` - Update to include GenerationPanel
-
-**Prerequisites**: Tasks 1-4 complete
-
-**Implementation Steps**:
-
-1. Create `GenerationPanel.jsx` container component:
-   - Import all generation components
-   - Use `useApp()` hook for global state
-   - Use `useJobPolling()` hook for status updates
-   - Manage local state for UI interactions
-
-2. Implement generation workflow:
-   - User enters prompt → update state
-   - User adjusts parameters → update state
-   - User clicks generate:
-     - Call API client `generateImages()`
-     - Get job ID from response
-     - Start polling with `useJobPolling(jobId)`
-     - Update UI to show generating state
-   - As job status updates:
-     - Extract image URLs from results
-     - Convert base64 to blob URLs
-     - Update image grid with completed images
-   - When job completes:
-     - Stop polling
-     - Show completion message
-     - Enable new generation
-
-3. Handle errors:
-   - API error → show error message, allow retry
-   - Rate limit → show specific message with countdown
-   - Content filter → show warning about prompt
-   - Network error → show connection error, allow retry
-
-4. Implement state management:
-   - Track current job ID
-   - Track generation status (idle, generating, completed, error)
-   - Track individual image statuses
-   - Track error messages
-
-5. Add user feedback:
-   - Progress indicator (X/9 models complete)
-   - Estimated time remaining (optional)
-   - Success message when complete
-   - Error messages with helpful actions
-
-**Verification Checklist**:
-- [ ] Workflow executes correctly (prompt → generate → display)
-- [ ] Polling starts when job is created
-- [ ] Images appear as models complete
-- [ ] Polling stops when job is complete
-- [ ] Errors are handled and displayed
-- [ ] Can start new generation after completion
-- [ ] Progress indicator shows accurate count
-
-**Testing Instructions**:
-- Full workflow test:
-  1. Enter prompt "beautiful sunset"
-  2. Adjust steps to 25, guidance to 7
-  3. Click generate
-  4. Verify API call is made
-  5. Verify polling starts
-  6. Watch images appear one by one
-  7. Verify polling stops when complete
-- Test error scenarios:
-  - Backend down → show error
-  - Rate limited → show limit message
-  - Invalid prompt → show filter warning
-- Test rapid successive generations
-- Monitor network tab for API calls
-
-**Commit Message Template**:
-```
-feat(frontend): integrate generation workflow
-
-- Create GenerationPanel container component
-- Connect all generation components
-- Implement end-to-end generation flow
-- Add polling for real-time status updates
-- Handle errors with user-friendly messages
-- Display progress indicator (X/9 complete)
-```
-
-**Estimated Tokens**: ~6,000
-
----
-
-### Task 6: Real-time Image Updates
-
-**Goal**: Implement efficient image loading and display as models complete
-
-**Files to Create**:
-- `/frontend/src/hooks/useImageLoader.js` - Image loading hook
-- `/frontend/src/utils/imageHelpers.js` - Image utility functions
-
-**Prerequisites**: Task 5 complete
-
-**Implementation Steps**:
-
-1. Create `imageHelpers.js` with utility functions:
-   - `base64ToBlob(base64, mimeType)` → converts base64 to Blob
-   - `createBlobUrl(blob)` → creates object URL from Blob
-   - `revokeBlobUrl(url)` → revokes object URL (cleanup)
-   - `fetchImageFromS3(s3Key, cloudFrontDomain)` → fetches image JSON
-
-2. Create `useImageLoader.js` hook:
-   - Accept: `jobStatus` (job status object from polling)
-   - Return: `images` (array of 9 image objects with URLs)
-   - Track blob URLs for cleanup
-
-3. Implement loading logic:
-   - When job status updates:
-     - For each completed model in results:
-       - Fetch image JSON from S3 (using imageKey)
-       - Extract base64 image
-       - Convert to blob URL
-       - Store in images array at correct index
-     - For in-progress models:
-       - Show loading state
-     - For errored models:
-       - Show error state
-
-4. Implement cleanup:
-   - On unmount: Revoke all blob URLs
-   - On new generation: Revoke old blob URLs before starting
-   - Prevent memory leaks
-
-5. Optimize performance:
-   - Only fetch images that haven't been fetched yet
-   - Cache fetched images (don't re-fetch)
-   - Use Promise.all for parallel fetches (if multiple complete at once)
-
-6. Handle S3/CloudFront fetch:
-   - Build CloudFront URL from image key
-   - Fetch JSON from CloudFront (faster than S3)
-   - Parse JSON and extract base64 image
-   - Handle fetch errors (retry once)
-
-**Verification Checklist**:
-- [ ] Images load as models complete (real-time)
-- [ ] Blob URLs are created correctly
-- [ ] Images display in browser
-- [ ] Cleanup prevents memory leaks
-- [ ] Only fetches new images (not duplicates)
-- [ ] Handles fetch errors gracefully
-
-**Testing Instructions**:
-- Generate images and watch them load one by one
-- Check browser memory (DevTools Performance tab) for leaks
-- Verify blob URLs are revoked on unmount
-- Test rapid successive generations (cleanup between)
-- Monitor network tab (should see CloudFront requests)
-- Test error handling (invalid S3 key)
-
-**Commit Message Template**:
-```
-feat(frontend): implement real-time image loading
-
-- Create useImageLoader hook for progressive image display
-- Add imageHelpers for base64/blob conversion
-- Fetch images from CloudFront as models complete
-- Implement blob URL cleanup to prevent memory leaks
-- Optimize with caching and parallel fetches
-```
-
-**Estimated Tokens**: ~5,000
-
----
-
-### Task 7: Prompt Enhancement UI
-
-**Goal**: Add button and UI for prompt enhancement feature
-
-**Files to Create**:
-- `/frontend/src/components/generation/PromptEnhancer.jsx`
-- `/frontend/src/components/generation/PromptEnhancer.module.css`
-
-**Prerequisites**: Task 6 complete
-
-**Implementation Steps**:
-
-1. Create `PromptEnhancer.jsx` component:
-   - Button: "Enhance Prompt" with magic wand icon
-   - Shows loading state when enhancing
-   - Displays enhanced prompt result
-
-2. Implement enhancement workflow:
-   - User clicks "Enhance" button
-   - Call API client `enhancePrompt(currentPrompt)`
-   - Show loading spinner
-   - When response received:
-     - Display enhanced prompt
-     - Option to use enhanced prompt or keep original
-     - Toggle between short and long versions (if available)
-
-3. Add UI for enhanced prompt:
-   - Display area below input
-   - Show original vs enhanced (comparison)
-   - Buttons: "Use This" and "Discard"
-   - Toggle switch: "Short" / "Long" version
-
-4. Integrate with PromptInput:
-   - Position enhance button near prompt input
-   - When "Use This" clicked, update prompt in input
-   - When "Discard" clicked, hide enhanced prompt
-
-5. Handle edge cases:
-   - Empty prompt → disable enhance button
-   - API error → show error message
-   - Very long enhanced prompt → truncate with "Read More"
-
-**Verification Checklist**:
-- [ ] Enhance button is visible and clickable
-- [ ] Loading state shows during API call
-- [ ] Enhanced prompt is displayed correctly
-- [ ] "Use This" updates the prompt input
-- [ ] "Discard" hides the enhanced prompt
-- [ ] Toggle between short/long versions works
-- [ ] Errors are handled gracefully
-
-**Testing Instructions**:
-- Enter short prompt "cat"
-- Click "Enhance"
-- Verify API call to /enhance endpoint
-- Verify enhanced prompt is displayed
-- Click "Use This" and verify input updates
-- Test toggle between short/long
-- Test with empty prompt (button should be disabled)
-- Test error handling (backend down)
-
-**Commit Message Template**:
-```
-feat(frontend): add prompt enhancement feature
-
-- Create PromptEnhancer component with enhance button
-- Call backend /enhance endpoint
-- Display original vs enhanced prompt comparison
-- Add "Use This" and "Discard" actions
-- Support short/long prompt toggle
-- Handle errors and edge cases
-```
-
-**Estimated Tokens**: ~4,000
-
----
-
-### Task 8: Polish and UX Improvements
-
-**Goal**: Add polish, animations, and UX improvements to generation flow
-
-**Files to Modify**:
-- All generation components
-- CSS files
-
-**Prerequisites**: Tasks 1-7 complete
-
-**Implementation Steps**:
-
-1. Add loading animations:
-   - Skeleton loader for placeholders (pulsing effect)
-   - Spinner animations (smooth rotation)
-   - Image fade-in transitions
-
-2. Add success feedback:
-   - Completion message: "All images generated!"
-   - Success animation (checkmark, confetti, etc.)
-   - Sound effect on completion (optional)
-
-3. Improve error messages:
-   - User-friendly error text (not technical jargon)
-   - Actionable suggestions ("Check your connection", "Try again")
-   - Dismiss button for errors
-
-4. Add empty states:
-   - Initial state: "Enter a prompt to get started"
-   - Placeholder images in grid
-   - Helpful tips or examples
-
-5. Optimize performance:
-   - Lazy load image grid (don't render until needed)
-   - Debounce parameter changes (prevent rapid updates)
-   - Memoize components with React.memo
-
-6. Accessibility improvements:
-   - Screen reader announcements for status changes
-   - Keyboard navigation for all controls
-   - Focus management (auto-focus prompt after generation)
-   - ARIA labels for all interactive elements
-
-7. Mobile optimizations:
-   - Touch-friendly targets (min 44px)
-   - Prevent zoom on input focus
-   - Optimize layout for small screens
-   - Reduce animations on low-power devices
-
-**Verification Checklist**:
-- [ ] Animations are smooth and not janky
-- [ ] Success feedback is clear and satisfying
-- [ ] Error messages are helpful
-- [ ] Empty states guide the user
-- [ ] Performance is good (no lag)
-- [ ] Accessible via keyboard and screen reader
-- [ ] Works well on mobile devices
-
-**Testing Instructions**:
-- Complete full generation flow, note any rough edges
-- Test on slow network (throttle in DevTools)
-- Test with screen reader (VoiceOver, NVDA)
-- Test keyboard-only navigation
-- Test on actual mobile device
-- Verify animations are smooth (60fps)
-- Run Lighthouse audit for performance and accessibility
-
-**Commit Message Template**:
-```
-feat(frontend): polish generation UI with animations and accessibility
-
-- Add skeleton loaders and fade-in animations
-- Implement success feedback with completion message
-- Improve error messages with actionable suggestions
-- Add empty states with helpful guidance
-- Optimize performance with memoization
-- Enhance accessibility (ARIA, keyboard navigation)
-- Mobile optimizations (touch targets, layout)
-```
-
-**Estimated Tokens**: ~3,500
+**Estimated Tokens:** ~15,000
 
 ---
 
 ## Phase Verification
 
-### Complete Phase Checklist
+After completing all tasks:
 
-Before moving to Section 3, verify:
+1. **Test Error Boundaries**
+   - Manually trigger render error in frontend
+   - Verify fallback UI appears
+   - Verify page doesn't white screen
+   - Verify error logged to CloudWatch
 
-- [ ] Prompt input works with character count and clear button
-- [ ] Parameter sliders adjust steps and guidance
-- [ ] Generate button triggers generation workflow
-- [ ] Image grid displays 9 images in responsive layout
-- [ ] Images load progressively as models complete
-- [ ] Job polling updates UI in real-time
-- [ ] Errors are handled and displayed
-- [ ] Prompt enhancement feature works
-- [ ] UI is polished with animations
-- [ ] Accessible and mobile-friendly
+2. **Test Correlation ID Tracing**
+   - Generate image in frontend
+   - Note correlation ID from Network tab
+   - Search CloudWatch Logs for correlation ID
+   - Verify all related logs appear (job creation, model execution, S3 upload)
 
-### End-to-End Testing
+3. **Test S3 Retry Logic**
+   - Simulate S3 transient error (temporarily revoke permissions)
+   - Verify retries occur (check CloudWatch logs)
+   - Restore permissions and verify eventual success
 
-**Test Scenario 1: Successful Generation**
-1. Open app in browser
-2. Enter prompt: "a majestic mountain landscape at sunset"
-3. Adjust steps to 30, guidance to 6
-4. Click "Generate Images"
-5. Verify:
-   - Button shows "Generating..." with spinner
-   - Image grid shows 9 placeholders with loading animation
-   - Progress indicator shows "0/9 complete"
-6. Wait and observe:
-   - Images appear one by one as models complete
-   - Progress updates (1/9, 2/9, ..., 9/9)
-   - Model names are displayed on each image
-7. When complete:
-   - All 9 images are displayed
-   - Button returns to "Generate Images"
-   - Success message shown
+4. **Test User-Facing Error Messages**
+   - Trigger rate limit (send many requests)
+   - Verify error message shows retry-after time
+   - Trigger validation error (empty prompt)
+   - Verify error message specifies field
 
-**Test Scenario 2: Error Handling**
-1. Disconnect internet
-2. Try to generate
-3. Verify error message about connection
-4. Reconnect internet
-5. Click "Try Again"
-6. Verify generation works
+5. **Review CloudWatch Logs**
+   - Verify structured JSON format
+   - Verify correlation IDs in all entries
+   - Verify log levels used appropriately (ERROR, WARNING, INFO)
+   - Test CloudWatch Insights queries from TROUBLESHOOTING.md
 
-**Test Scenario 3: Prompt Enhancement**
-1. Enter short prompt: "dog"
-2. Click "Enhance Prompt"
-3. Verify enhanced prompt is displayed
-4. Toggle between short/long versions
-5. Click "Use This"
-6. Verify prompt input is updated
-
-### Performance Benchmarks
-
-- Prompt input: No lag while typing
-- Parameter sliders: Smooth dragging (60fps)
-- Image grid: Smooth fade-in transitions
-- Generate button: Immediate response to click
-- Polling: 2-second interval without UI lag
-- Memory: No leaks (blob URLs cleaned up)
-
-### Known Limitations
-
-- No gallery feature yet (Section 3)
-- No sound effects yet (Section 3)
-- No advanced animations (breathing background) yet (Section 3)
-- Limited customization options
-
----
-
-## Section 3: Gallery & Advanced Features
-
-### Section Goal
-
-Implement the gallery feature for browsing historical generations, add sound effects for user interactions, create the breathing background animation, and add final polish features to match the full feature parity of pixel-prompt-js.
-
-**Success Criteria**:
-- Gallery displays previews of all past generations
-- User can click a gallery preview to load all 9 images from that session
-- Sound effects play on button clicks and interactions
-- Breathing background animation runs continuously
-- Expandable sections work correctly
-- All features from pixel-prompt-js are replicated
-- UI is polished and production-ready
-
-**Estimated Tokens**: ~40,000
-
----
-
-### Prerequisites
-
-- Section 2 complete (core generation UI working)
-- Sound files copied to frontend/assets/sounds/
-- Reference components from pixel-prompt-js
-
----
-
-### Tasks
-
-### Task 1: Gallery Module - S3 Listing
-
-**Goal**: Create module to list and fetch gallery items from S3
-
-**Files to Create**:
-- `/frontend/src/hooks/useGallery.js` - Gallery data hook
-- `/frontend/src/utils/s3Helpers.js` - S3 listing utilities
-
-**Prerequisites**: Section 2 complete
-
-**Implementation Steps**:
-
-1. Create `s3Helpers.js` with S3 listing functions:
-   - `listGalleryFolders(s3Client)` → returns list of folders
-   - `listGalleryImages(s3Client, folder)` → returns images in folder
-   - Use S3 SDK (install `@aws-sdk/client-s3` if using browser SDK)
-   - Alternative: Create Lambda endpoint `/gallery/list` and use API client
-
-2. Note: Browser cannot directly access S3 (CORS, credentials)
-   - Recommended approach: Add Lambda endpoints for gallery listing
-   - Or: Use pre-signed URLs generated by backend
-   - Or: List via CloudFront with S3 XML listing enabled
-
-3. Create `useGallery.js` hook:
-   ```javascript
-   function useGallery() {
-     const [galleries, setGalleries] = useState([]);
-     const [selectedGallery, setSelectedGallery] = useState(null);
-     const [loading, setLoading] = useState(false);
-     const [error, setError] = useState(null);
-
-     const fetchGalleries = async () => {
-       // Fetch list of gallery folders
-     };
-
-     const loadGallery = async (galleryId) => {
-       // Fetch all images from gallery
-     };
-
-     return { galleries, selectedGallery, loading, error, fetchGalleries, loadGallery };
-   }
+6. **Run Integration Tests**
+   ```bash
+   pytest tests/integration/test_error_scenarios.py -v
+   pytest tests/integration/test_correlation_ids.py -v
    ```
 
-4. Implement `fetchGalleries()`:
-   - Call backend endpoint (new: `GET /gallery/list`)
-   - Returns array of gallery folders: `[{id: "2025-11-15-14-30-45", preview: "..."}]`
-   - For each folder, get one random image as preview
-   - Store in state
+**Integration Points for Next Phase:**
+- Error handling tested before production deployment (Phase 3)
+- CloudWatch logging ready for performance monitoring (Phase 3, 4)
+- Retry logic improves reliability for production traffic (Phase 3)
 
-5. Implement `loadGallery(galleryId)`:
-   - Call backend endpoint (new: `GET /gallery/{galleryId}`)
-   - Returns all images from that folder
-   - Parse and convert to display format
-   - Update selectedGallery state
-
-6. Add backend endpoints (in Lambda):
-   - `GET /gallery/list`: List all folders, return with preview images
-   - `GET /gallery/{galleryId}`: Return all images from folder
-
-**Verification Checklist**:
-- [ ] useGallery hook fetches galleries successfully
-- [ ] Gallery list includes preview images
-- [ ] loadGallery fetches all images from selected gallery
-- [ ] Backend endpoints work correctly
-- [ ] Error handling for failed fetches
-
-**Testing Instructions**:
-- Create test generations to populate gallery
-- Call fetchGalleries() and verify list returned
-- Call loadGallery() and verify images returned
-- Test with empty gallery (no generations yet)
-- Test error handling (backend down)
-
-**Commit Message Template**:
-```
-feat(frontend): implement gallery data fetching
-
-- Create useGallery hook for gallery management
-- Add s3Helpers for S3 operations
-- Implement fetchGalleries and loadGallery functions
-- Add backend endpoints for gallery listing
-- Handle errors and loading states
-```
-
-**Estimated Tokens**: ~5,000
+**Known Limitations:**
+- CloudWatch Logs viewer requires AWS console access (no custom dashboard)
+- Error deduplication is client-side only (same error from multiple users logs multiple times)
+- Retry logic doesn't use circuit breaker pattern (acceptable for current scale)
 
 ---
 
-### Task 2: Gallery UI Component
+## Success Metrics
 
-**Goal**: Create gallery UI for browsing and selecting past generations
+- [ ] Error boundaries prevent white screen crashes (manually verified)
+- [ ] All frontend errors logged to CloudWatch
+- [ ] Correlation IDs trace requests end-to-end
+- [ ] S3 operations retry on transient errors (3 retries with backoff)
+- [ ] User error messages are clear and actionable
+- [ ] CloudWatch Insights queries work as documented
+- [ ] All error scenario integration tests pass
+- [ ] Staging environment verification complete
 
-**Files to Create**:
-- `/frontend/src/components/gallery/GalleryBrowser.jsx`
-- `/frontend/src/components/gallery/GalleryBrowser.module.css`
-- `/frontend/src/components/gallery/GalleryPreview.jsx`
-
-**Prerequisites**: Task 1 complete, reference `/pixel-prompt-js/components/ImageGrid.js`
-
-**Implementation Steps**:
-
-1. Create `GalleryPreview.jsx` component:
-   - Props: `gallery` (object with id, preview image, date)
-   - Render preview image in card
-   - Show date/timestamp
-   - Clickable to load full gallery
-   - Hover effect (scale up slightly)
-
-2. Create `GalleryBrowser.jsx` component:
-   - Use `useGallery()` hook
-   - Display grid of GalleryPreview components
-   - Show loading state while fetching
-   - Show empty state if no galleries
-
-3. Implement gallery selection:
-   - Click preview → call `loadGallery(galleryId)`
-   - Show loading overlay
-   - When loaded, display all 9 images in main image grid
-   - Highlight selected gallery in browser
-
-4. Layout the gallery browser:
-   - Horizontal scrollable row of previews (like film strip)
-   - Or grid layout if many galleries
-   - Position: Below main controls, above image grid
-   - Collapsible: Can hide gallery browser to save space
-
-5. Add pagination (if many galleries):
-   - Show 10-20 galleries at a time
-   - "Load More" button
-   - Or infinite scroll
-
-6. Style the gallery browser:
-   - Preview cards with border and shadow
-   - Selected state (highlight border)
-   - Responsive: Horizontal scroll on mobile, grid on desktop
-
-**Verification Checklist**:
-- [ ] Gallery browser displays previews
-- [ ] Click preview loads full gallery
-- [ ] Selected gallery is highlighted
-- [ ] Loading states work
-- [ ] Empty state shows when no galleries
-- [ ] Responsive design works
-
-**Testing Instructions**:
-- Generate several images to create galleries
-- Open gallery browser and verify previews shown
-- Click preview and verify all 9 images load
-- Test with many galleries (pagination/scroll)
-- Test on mobile (horizontal scroll)
-- Verify loading and empty states
-
-**Commit Message Template**:
-```
-feat(frontend): create gallery browser UI
-
-- Add GalleryPreview component for individual galleries
-- Create GalleryBrowser with grid/scroll layout
-- Implement gallery selection and loading
-- Add loading and empty states
-- Style with responsive design
-```
-
-**Estimated Tokens**: ~5,000
+This phase significantly improves application resilience and debuggability, essential for production readiness.
 
 ---
 
-### Task 3: Sound Effects Module
-
-**Goal**: Add sound effects for user interactions
-
-**Files to Create**:
-- `/frontend/src/hooks/useSound.js` - Sound playback hook
-- `/frontend/src/components/common/SoundPlayer.jsx` - Sound player component
-
-**Prerequisites**: Task 2 complete, reference `/pixel-prompt-js/components/Sounds.js`
-
-**Implementation Steps**:
-
-1. Copy sound files to `/frontend/src/assets/sounds/`:
-   - `click.wav` - Button click sound
-   - `switch.wav` - Toggle switch sound
-   - `swoosh.wav` - Transition sound
-   - `expand.mp3` - Expand section sound
-
-2. Create `useSound.js` hook:
-   ```javascript
-   function useSound() {
-     const [sounds, setSounds] = useState({});
-
-     useEffect(() => {
-       // Preload sounds
-       const audio = {
-         click: new Audio('/assets/sounds/click.wav'),
-         switch: new Audio('/assets/sounds/switch.wav'),
-         swoosh: new Audio('/assets/sounds/swoosh.wav'),
-         expand: new Audio('/assets/sounds/expand.mp3')
-       };
-       setSounds(audio);
-     }, []);
-
-     const playSound = (soundName) => {
-       if (sounds[soundName]) {
-         sounds[soundName].currentTime = 0; // Reset to start
-         sounds[soundName].play().catch(err => console.log('Sound play failed:', err));
-       }
-     };
-
-     return { playSound };
-   }
-   ```
-
-3. Create `SoundPlayer.jsx` component:
-   - Accept props: `soundToPlay` (name of sound)
-   - Use `useSound()` hook
-   - Play sound when `soundToPlay` changes
-   - Handle autoplay restrictions (user must interact first)
-
-4. Integrate sounds into components:
-   - Generate button click: Play "click" sound
-   - Parameter slider change: Play "switch" sound
-   - Gallery preview click: Play "swoosh" sound
-   - Expand/collapse sections: Play "expand" sound
-
-5. Add mute toggle:
-   - Button to mute/unmute sounds
-   - Store preference in localStorage
-   - Respect user preference on page load
-
-6. Handle browser autoplay restrictions:
-   - Sounds only work after user interaction
-   - Show notice if autoplay blocked
-   - Graceful fallback (no crash if sound fails)
-
-**Verification Checklist**:
-- [ ] Sounds preload on app mount
-- [ ] playSound() plays correct sound
-- [ ] Sounds play on button clicks
-- [ ] Sounds play on slider changes
-- [ ] Mute toggle works and persists
-- [ ] No errors if sound playback fails
-
-**Testing Instructions**:
-- Click generate button, verify click sound
-- Move sliders, verify switch sound
-- Click gallery preview, verify swoosh sound
-- Toggle mute and verify sounds stop
-- Refresh page and verify mute preference persists
-- Test in browser with strict autoplay policy (check console for errors)
-
-**Commit Message Template**:
-```
-feat(frontend): add sound effects for interactions
-
-- Create useSound hook for sound playback
-- Add SoundPlayer component
-- Integrate sounds (click, switch, swoosh, expand)
-- Add mute toggle with localStorage persistence
-- Handle browser autoplay restrictions gracefully
-```
-
-**Estimated Tokens**: ~4,000
-
----
-
-### Task 4: Breathing Background Animation
-
-**Goal**: Create subtle breathing background animation
-
-**Files to Create**:
-- `/frontend/src/components/common/BreathingBackground.jsx`
-- `/frontend/src/components/common/BreathingBackground.module.css`
-
-**Prerequisites**: Task 3 complete, reference `/pixel-prompt-js/components/Breathing.js`
-
-**Implementation Steps**:
-
-1. Create `BreathingBackground.jsx` component:
-   - Renders full-screen background layer
-   - Animated gradient or color shift
-   - Subtle pulsing effect (scale or opacity)
-
-2. Implement animation:
-   - Use CSS animations or React Animated (prefer CSS for performance)
-   - Keyframes for breathing effect:
-     ```css
-     @keyframes breathe {
-       0%, 100% { transform: scale(1); opacity: 0.5; }
-       50% { transform: scale(1.05); opacity: 0.7; }
-     }
-     ```
-   - Duration: 6-8 seconds (slow, calm breathing)
-   - Infinite loop
-
-3. Style the background:
-   - Position: fixed, full viewport
-   - Z-index: -1 (behind all content)
-   - Gradient: Subtle dark colors (purple, blue, black)
-   - Blur or filter effects for atmosphere
-
-4. Optimize performance:
-   - Use `will-change: transform` for GPU acceleration
-   - Avoid animating expensive properties (e.g., box-shadow)
-   - Test on low-end devices (disable if laggy)
-
-5. Add toggle:
-   - User preference to disable animation
-   - Store in localStorage
-   - Some users may find animation distracting
-
-**Verification Checklist**:
-- [ ] Background animation is visible
-- [ ] Animation is smooth (60fps)
-- [ ] Doesn't interfere with content readability
-- [ ] Performance is good (no lag)
-- [ ] Toggle works to disable animation
-
-**Testing Instructions**:
-- View app and observe background breathing
-- Verify smooth animation (no stuttering)
-- Test on low-end device or throttle CPU
-- Toggle animation off and verify it stops
-- Verify content is still readable with animation
-
-**Commit Message Template**:
-```
-feat(frontend): add breathing background animation
-
-- Create BreathingBackground component
-- Implement CSS keyframe animation (6s loop)
-- Style with subtle gradient and pulsing effect
-- Optimize with GPU acceleration
-- Add toggle to disable animation
-```
-
-**Estimated Tokens**: ~3,500
-
----
-
-### Task 5: Expandable Sections Component
-
-**Goal**: Create collapsible sections for organizing UI
-
-**Files to Create**:
-- `/frontend/src/components/common/Expand.jsx`
-- `/frontend/src/components/common/Expand.module.css`
-
-**Prerequisites**: Task 4 complete, reference `/pixel-prompt-js/components/Expand.js`
-
-**Implementation Steps**:
-
-1. Create `Expand.jsx` component:
-   - Props: `title`, `children`, `defaultExpanded`, `onToggle`
-   - Renders header with title and expand/collapse icon
-   - Renders children (content) when expanded
-   - Smooth height transition when toggling
-
-2. Implement expand/collapse:
-   - State: `isExpanded` (boolean)
-   - Click header → toggle state
-   - Animate height transition (CSS transition)
-   - Rotate icon (arrow or chevron)
-
-3. Handle animations:
-   - Expanding: Height 0 → auto (with transition)
-   - Collapsing: Height auto → 0
-   - Icon rotation: 0deg → 180deg
-   - Use CSS transition for smooth effect
-
-4. Add sound effect:
-   - Play "expand" sound on toggle
-   - Use `useSound()` hook
-
-5. Style the component:
-   - Header: Button-like, clickable
-   - Icon: Arrow or chevron that rotates
-   - Content: Padded, smooth reveal
-   - Responsive: Full width on mobile
-
-6. Accessibility:
-   - Proper ARIA attributes (aria-expanded)
-   - Keyboard navigation (Enter/Space to toggle)
-   - Focus state on header
-
-**Verification Checklist**:
-- [ ] Section expands and collapses smoothly
-- [ ] Icon rotates on toggle
-- [ ] Sound plays on toggle
-- [ ] Keyboard accessible (Enter/Space)
-- [ ] ARIA attributes are correct
-- [ ] Multiple instances work independently
-
-**Testing Instructions**:
-- Create component with test content
-- Click header and verify smooth expand
-- Click again and verify collapse
-- Test keyboard navigation
-- Test with multiple Expand components on page
-- Verify sound plays on toggle
-
-**Commit Message Template**:
-```
-feat(frontend): create expandable sections component
-
-- Add Expand component with smooth height transition
-- Implement expand/collapse with icon rotation
-- Add sound effect on toggle
-- Make keyboard accessible
-- Style with responsive design
-```
-
-**Estimated Tokens**: ~4,000
-
----
-
-### Task 6: Advanced UI Features
-
-**Goal**: Add remaining features for full parity with pixel-prompt-js
-
-**Files to Create/Modify**:
-- Various components as needed
-
-**Prerequisites**: Tasks 1-5 complete
-
-**Implementation Steps**:
-
-1. Add model-specific status indicators:
-   - Show which models are currently processing
-   - Color-coded status (pending, in-progress, complete, error)
-   - Progress bar for overall completion
-
-2. Implement image expansion modal:
-   - Click image → open full-screen modal
-   - Show large version of image
-   - Display model name, prompt, parameters
-   - Navigation arrows to view other images
-   - Close button or click outside to dismiss
-   - Keyboard shortcuts (Esc to close, arrows to navigate)
-
-3. Add prompt examples/seeds:
-   - Button: "Random Prompt" or "Example"
-   - Loads random prompt from seeds.json (copy from pixel-prompt-js)
-   - Helps users get started
-
-4. Implement parameters preset:
-   - Quick buttons: "Fast" (low steps), "Quality" (high steps), "Creative" (high guidance)
-   - One-click to set multiple parameters
-
-5. Add copy-to-clipboard:
-   - Button to copy prompt
-   - Button to copy parameters
-   - Toast notification on copy
-
-6. Implement download images:
-   - Download button on each image
-   - Downloads as PNG with metadata
-   - Filename: `{model}-{timestamp}.png`
-
-7. Add keyboard shortcuts:
-   - Ctrl+Enter: Generate
-   - Ctrl+E: Enhance prompt
-   - Ctrl+R: Random prompt
-   - Esc: Clear/cancel
-   - Show shortcut hints (tooltip or help modal)
-
-**Verification Checklist**:
-- [ ] Model status indicators show correctly
-- [ ] Image expansion modal works
-- [ ] Random prompt button works
-- [ ] Parameter presets apply correctly
-- [ ] Copy-to-clipboard works with toast
-- [ ] Download images works
-- [ ] Keyboard shortcuts work
-- [ ] All features are accessible
-
-**Testing Instructions**:
-- Test each feature individually
-- Verify keyboard shortcuts
-- Test copy and download
-- Test modal navigation
-- Verify all features work on mobile
-- Check accessibility with screen reader
-
-**Commit Message Template**:
-```
-feat(frontend): add advanced UI features
-
-- Add model-specific status indicators
-- Implement image expansion modal with navigation
-- Add random prompt button with seeds
-- Create parameter presets (fast, quality, creative)
-- Add copy-to-clipboard with toast notifications
-- Implement download images feature
-- Add keyboard shortcuts and hints
-```
-
-**Estimated Tokens**: ~6,000
-
----
-
-### Task 7: Mobile Optimizations
-
-**Goal**: Optimize UI and UX for mobile devices
-
-**Files to Modify**:
-- All component CSS files
-- App layout
-
-**Prerequisites**: Task 6 complete
-
-**Implementation Steps**:
-
-1. Review mobile layout:
-   - Test on actual devices (iOS, Android)
-   - Identify layout issues, overflow, tiny text, etc.
-   - Use browser DevTools device emulation
-
-2. Optimize touch targets:
-   - All buttons: Min 44x44px
-   - Sliders: Larger thumb (min 44px)
-   - Gallery previews: Larger for easier tapping
-
-3. Adjust font sizes:
-   - Ensure text is readable (min 16px body text)
-   - Headers scale appropriately
-   - No tiny text
-
-4. Fix overflow and scrolling:
-   - Horizontal scroll only where intended (gallery)
-   - Prevent accidental horizontal scroll
-   - Proper overflow handling in modals
-
-5. Optimize animations:
-   - Reduce or disable heavy animations on mobile
-   - Use `prefers-reduced-motion` media query
-   - Prioritize performance over aesthetics
-
-6. Handle mobile keyboards:
-   - Prevent input zoom (font-size: 16px min)
-   - Proper input types (text, number)
-   - Smooth scroll when keyboard appears
-
-7. Test gestures:
-   - Swipe to navigate images in modal
-   - Pull to refresh (disable if conflicts)
-   - Pinch to zoom on images (enable)
-
-8. Optimize for slow networks:
-   - Show loading states immediately
-   - Optimize image sizes
-   - Progressive loading
-   - Retry failed loads
-
-**Verification Checklist**:
-- [ ] All touch targets are large enough
-- [ ] Text is readable on small screens
-- [ ] No horizontal overflow
-- [ ] Animations perform well
-- [ ] Keyboard doesn't cause layout issues
-- [ ] Gestures work naturally
-- [ ] Works on slow networks
-
-**Testing Instructions**:
-- Test on real iPhone and Android device
-- Test with slow network (3G throttling)
-- Test in portrait and landscape
-- Verify all interactions work with touch
-- Check accessibility (font scaling)
-- Run Lighthouse mobile audit
-
-**Commit Message Template**:
-```
-feat(frontend): optimize for mobile devices
-
-- Increase touch target sizes (min 44px)
-- Adjust font sizes for readability
-- Fix overflow and scrolling issues
-- Reduce animations on mobile
-- Handle mobile keyboard properly
-- Add swipe gestures for image modal
-- Optimize for slow networks
-```
-
-**Estimated Tokens**: ~5,000
-
----
-
-### Task 8: Final Polish and Testing
-
-**Goal**: Final polish, bug fixes, and comprehensive testing
-
-**Files to Modify**:
-- All components as needed
-
-**Prerequisites**: Tasks 1-7 complete
-
-**Implementation Steps**:
-
-1. Visual polish:
-   - Review all components for visual consistency
-   - Ensure spacing, colors, fonts match design
-   - Fix any visual bugs or glitches
-   - Smooth all animations
-   - Add micro-interactions (hover effects, etc.)
-
-2. Performance optimization:
-   - Run Lighthouse audit
-   - Optimize bundle size (code splitting, lazy loading)
-   - Optimize images (compress, WebP format)
-   - Remove unused dependencies
-   - Minimize CSS and JS
-
-3. Error handling review:
-   - Test all error scenarios
-   - Ensure error messages are helpful
-   - Add error boundaries for graceful failure
-   - Log errors for debugging
-
-4. Accessibility audit:
-   - Run axe or WAVE accessibility checker
-   - Fix all violations
-   - Test with screen reader
-   - Ensure keyboard navigation works everywhere
-   - Check color contrast
-
-5. Cross-browser testing:
-   - Test in Chrome, Firefox, Safari, Edge
-   - Fix browser-specific issues
-   - Use autoprefixer for CSS compatibility
-   - Polyfills if needed
-
-6. Comprehensive testing:
-   - Test all features end-to-end
-   - Test edge cases (empty states, errors, limits)
-   - Test rapid interactions (spam clicking)
-   - Test concurrent usage (multiple tabs)
-   - Load testing (many galleries)
-
-7. Documentation:
-   - Update README with features and usage
-   - Document known issues
-   - Add troubleshooting guide
-   - Screenshot gallery for documentation
-
-**Verification Checklist**:
-- [ ] Visual design is polished and consistent
-- [ ] Lighthouse score > 90 (performance, accessibility)
-- [ ] All errors handled gracefully
-- [ ] Accessibility violations fixed
-- [ ] Works in all major browsers
-- [ ] All features tested and working
-- [ ] Documentation is complete
-
-**Testing Instructions**:
-- Run full test suite
-- Perform manual testing of all features
-- Run Lighthouse and fix issues
-- Test in all browsers
-- Get user feedback (if possible)
-- Fix all critical bugs before release
-
-**Commit Message Template**:
-```
-feat(frontend): final polish and optimization
-
-- Polish visual design and animations
-- Optimize performance (bundle size, lazy loading)
-- Fix all accessibility violations
-- Add comprehensive error handling
-- Test and fix cross-browser issues
-- Update documentation with features and usage
-```
-
-**Estimated Tokens**: ~4,500
-
----
-
-## Phase Verification
-
-### Complete Phase Checklist
-
-Before moving to Section 4, verify:
-
-- [ ] Gallery browser displays past generations
-- [ ] Can select and load galleries
-- [ ] Sound effects play on interactions
-- [ ] Breathing background animates smoothly
-- [ ] Expandable sections work
-- [ ] All advanced features implemented (modal, download, copy, shortcuts)
-- [ ] Mobile optimizations complete
-- [ ] Final polish and testing done
-
-### Feature Parity Checklist
-
-Compare with pixel-prompt-js to ensure parity:
-
-- [ ] Prompt input with character count and clear
-- [ ] Parameter sliders (steps, guidance)
-- [ ] Generate button with loading states
-- [ ] Prompt enhancement
-- [ ] Image grid with 9 models
-- [ ] Progressive loading as models complete
-- [ ] Gallery browser with previews
-- [ ] Sound effects on interactions
-- [ ] Breathing background
-- [ ] Expandable sections
-- [ ] Image expansion modal
-- [ ] Download images
-- [ ] Copy prompt/parameters
-- [ ] Keyboard shortcuts
-- [ ] Responsive mobile design
-
-### Performance Benchmarks
-
-Run Lighthouse audit and verify:
-- Performance: > 90
-- Accessibility: 100
-- Best Practices: > 90
-- SEO: > 90
-
-Bundle size targets:
-- JavaScript: < 500KB (gzipped)
-- CSS: < 50KB (gzipped)
-- Total page weight: < 1MB
-
-### Known Limitations
-
-- Gallery may be slow with 100+ generations (add pagination)
-- Sound effects may not work on first load (autoplay restrictions)
-- Some animations may lag on very old devices
-- Limited to 9 models (backend constraint)
-
----
-
-## Section 4: Integration Testing & Documentation
-
-### Section Goal
-
-Conduct comprehensive end-to-end testing of the entire system, fix all critical bugs, create production-ready documentation, and prepare for deployment. This phase ensures the pixel-prompt-complete distribution is stable, well-documented, and ready for use.
-
-**Success Criteria**:
-- All integration tests pass
-- No critical bugs remaining
-- Comprehensive documentation complete
-- Deployment guide tested and verified
-- Performance benchmarks meet targets
-- Security review complete
-- Ready for production deployment
-
-**Estimated Tokens**: ~15,000
-
----
-
-### Prerequisites
-
-- All previous sections complete
-- Backend deployed to AWS
-- Frontend built and testable
-- Access to testing environments
-
----
-
-### Tasks
-
-### Task 1: End-to-End Integration Tests
-
-**Goal**: Create and execute comprehensive integration test suite
-
-**Files to Create**:
-- `/tests/integration/test_full_workflow.py` - Backend integration tests
-- `/frontend/tests/integration.test.js` - Frontend integration tests
-- `/tests/e2e/test_scenarios.js` - End-to-end browser tests (optional: Playwright/Cypress)
-
-**Prerequisites**: All phases complete
-
-**Implementation Steps**:
-
-1. **Backend Integration Tests** (Python):
-   - Test 1: Full generation workflow
-     - Create job with POST /generate
-     - Poll GET /status until complete
-     - Verify all 9 models succeeded
-     - Verify images saved to S3
-     - Verify job status is "completed"
-   - Test 2: Rate limiting
-     - Make GLOBAL_LIMIT + 1 requests
-     - Verify 429 response
-     - Test IP whitelisting
-   - Test 3: Content filtering
-     - Submit inappropriate prompt
-     - Verify 400 response
-     - Verify no job created
-   - Test 4: Prompt enhancement
-     - Call POST /enhance
-     - Verify enhanced prompt returned
-     - Verify longer than original
-   - Test 5: Error handling
-     - Invalid API keys (set env to bad keys)
-     - Timeout scenarios
-     - S3 unavailable
-     - Network errors
-
-2. **Frontend Integration Tests** (JavaScript):
-   - Test 1: Component integration
-     - Render full app
-     - Verify all components present
-     - Verify state management works
-   - Test 2: API client integration
-     - Mock backend responses
-     - Test generateImages flow
-     - Test getJobStatus polling
-     - Test enhancePrompt
-   - Test 3: Gallery integration
-     - Mock gallery data
-     - Test fetchGalleries
-     - Test loadGallery
-     - Verify images display
-
-3. **End-to-End Tests** (Browser, optional but recommended):
-   - Use Playwright or Cypress
-   - Test 1: Full user journey
-     - Open app
-     - Enter prompt
-     - Adjust parameters
-     - Click generate
-     - Wait for images
-     - Verify all 9 images appear
-   - Test 2: Gallery flow
-     - Generate images
-     - Open gallery
-     - Click preview
-     - Verify images load
-   - Test 3: Error scenarios
-     - Disconnect network
-     - Verify error message
-     - Reconnect
-     - Verify retry works
-
-4. Run all tests and document results:
-   - Create test report
-   - Note pass/fail for each test
-   - Document any flaky tests
-   - Fix all failing tests
-
-**Verification Checklist**:
-- [ ] All backend integration tests pass
-- [ ] All frontend integration tests pass
-- [ ] E2E tests pass (if implemented)
-- [ ] Test coverage > 70% for critical paths
-- [ ] No flaky tests (tests pass consistently)
-
-**Testing Instructions**:
-```bash
-# Backend tests
-cd backend
-pytest tests/integration/ -v
-
-# Frontend tests
-cd frontend
-npm run test:integration
-
-# E2E tests (if using Playwright)
-npx playwright test
-```
-
-**Commit Message Template**:
-```
-test: add comprehensive integration test suite
-
-- Add backend integration tests (full workflow, rate limit, content filter)
-- Add frontend integration tests (components, API client, gallery)
-- Add E2E browser tests with Playwright (optional)
-- Document test results and coverage
-```
-
-**Estimated Tokens**: ~5,000
-
----
-
-### Task 2: Security Review and Hardening
-
-**Goal**: Review and fix security vulnerabilities
-
-**Files to Modify**:
-- Backend Lambda code
-- Frontend code
-- SAM template
-
-**Prerequisites**: Task 1 complete
-
-**Implementation Steps**:
-
-1. **Backend Security Review**:
-   - Check API key handling:
-     - Never log API keys
-     - Keys stored in environment variables only
-     - No keys in code or version control
-   - Check input validation:
-     - Prompt max length enforced
-     - Parameters within valid ranges
-     - No SQL injection risk (N/A - no SQL)
-     - No command injection risk
-   - Check output sanitization:
-     - Error messages don't leak sensitive info
-     - Stack traces not exposed to users
-   - Check rate limiting:
-     - Works correctly
-     - Can't be bypassed
-     - IP whitelist is intentional
-   - Check S3 permissions:
-     - Bucket not publicly writable
-     - CloudFront OAI correctly configured
-     - No unintended public access
-
-2. **Frontend Security Review**:
-   - Check for XSS vulnerabilities:
-     - User input properly escaped
-     - No dangerouslySetInnerHTML with user content
-     - React handles escaping by default
-   - Check API endpoint configuration:
-     - Endpoint URL from environment variable
-     - Not hardcoded in code
-   - Check secrets exposure:
-     - No API keys in frontend code
-     - No sensitive data in localStorage
-   - Check dependencies:
-     - Run `npm audit` and fix vulnerabilities
-     - Update dependencies to latest secure versions
-
-3. **Infrastructure Security**:
-   - Review SAM template:
-     - Least privilege IAM roles
-     - No overly permissive policies
-     - S3 bucket not publicly accessible
-     - CloudFront HTTPS enforced
-     - API Gateway CORS not too permissive (restrict origins in production)
-   - Review network security:
-     - All traffic over HTTPS
-     - No HTTP allowed
-
-4. **Security Scanning**:
-   - Run SAST tools:
-     - `bandit` for Python (backend)
-     - `npm audit` for JavaScript (frontend)
-   - Fix all HIGH and CRITICAL vulnerabilities
-   - Document MEDIUM and LOW for later
-
-5. **Document security considerations**:
-   - Create SECURITY.md:
-     - Responsible disclosure policy
-     - Known security considerations
-     - How to report vulnerabilities
-     - Security best practices for deployment
-
-**Verification Checklist**:
-- [ ] No API keys in code or logs
-- [ ] Input validation on all user inputs
-- [ ] Rate limiting prevents abuse
-- [ ] S3 bucket permissions correct
-- [ ] No XSS vulnerabilities
-- [ ] Dependencies up to date and secure
-- [ ] IAM roles follow least privilege
-- [ ] All traffic over HTTPS
-- [ ] Security scanners pass
-- [ ] SECURITY.md documented
-
-**Testing Instructions**:
-- Run security scanners:
-  ```bash
-  # Backend
-  pip install bandit
-  bandit -r backend/src/
-
-  # Frontend
-  npm audit
-  ```
-- Manual security review
-- Test rate limiting edge cases
-- Verify S3 bucket is not publicly accessible
-
-**Commit Message Template**:
-```
-security: comprehensive security review and hardening
-
-- Fix API key handling and logging
-- Add input validation for all parameters
-- Review and fix IAM permissions (least privilege)
-- Fix dependency vulnerabilities
-- Add SECURITY.md with disclosure policy
-- Verify HTTPS everywhere
-```
-
-**Estimated Tokens**: ~4,000
-
----
-
-### Task 3: Performance Testing and Optimization
-
-**Goal**: Measure and optimize system performance
-
-**Files to Modify**:
-- Various backend and frontend files as needed
-
-**Prerequisites**: Task 2 complete
-
-**Implementation Steps**:
-
-1. **Backend Performance Testing**:
-   - Test Lambda cold start time:
-     - Measure time for first invocation
-     - Target: < 3 seconds
-   - Test Lambda warm execution time:
-     - Measure time for subsequent invocations
-     - Target: < 500ms for job creation
-   - Test parallel model execution:
-     - Measure time for all 9 models
-     - Target: 30-90 seconds (depends on external APIs)
-     - Verify models run in parallel, not sequential
-   - Test S3 operations:
-     - Measure put_object latency
-     - Measure get_object latency
-     - Target: < 200ms
-   - Load test:
-     - Simulate 100 concurrent users
-     - Verify no errors or timeouts
-     - Check CloudWatch logs for issues
-
-2. **Frontend Performance Testing**:
-   - Run Lighthouse audit:
-     - Performance score target: > 90
-     - Identify and fix performance issues
-   - Measure bundle size:
-     - JavaScript target: < 500KB gzipped
-     - CSS target: < 50KB gzipped
-     - If too large, code split and lazy load
-   - Measure page load time:
-     - First Contentful Paint: < 1.5s
-     - Time to Interactive: < 3.5s
-     - Largest Contentful Paint: < 2.5s
-   - Test image loading:
-     - Measure time to display first image
-     - Verify progressive loading works
-     - Optimize blob URL creation
-
-3. **Optimize as needed**:
-   - Backend optimizations:
-     - Reduce Lambda package size (remove unused deps)
-     - Use Lambda Layers for large dependencies
-     - Optimize S3 key structure for faster lookups
-     - Add caching (if beneficial)
-   - Frontend optimizations:
-     - Code splitting (dynamic imports)
-     - Lazy load components not needed initially
-     - Optimize images (compress, WebP)
-     - Tree shake unused code
-     - Use React.memo for expensive components
-     - Debounce expensive operations
-
-4. **Document performance benchmarks**:
-   - Create PERFORMANCE.md:
-     - Measured performance metrics
-     - Benchmarking methodology
-     - Optimization techniques used
-     - Known performance limitations
-
-**Verification Checklist**:
-- [ ] Lambda cold start < 3s
-- [ ] Lambda warm execution < 500ms
-- [ ] Parallel execution works (models run concurrently)
-- [ ] Lighthouse performance score > 90
-- [ ] Bundle size within targets
-- [ ] Page load times meet targets
-- [ ] Load testing passes (100 concurrent users)
-
-**Testing Instructions**:
-```bash
-# Backend load test (using Artillery or k6)
-artillery quick --count 100 --num 10 $API_ENDPOINT/generate
-
-# Frontend performance
-cd frontend
-npm run build
-npm run preview
-# Run Lighthouse audit in Chrome DevTools
-
-# Measure bundle size
-du -sh dist/*
-```
-
-**Commit Message Template**:
-```
-perf: performance testing and optimization
-
-- Measure Lambda cold start and warm execution times
-- Run load test with 100 concurrent users
-- Optimize frontend bundle size with code splitting
-- Run Lighthouse audit and fix performance issues
-- Document performance benchmarks in PERFORMANCE.md
-```
-
-**Estimated Tokens**: ~4,000
-
----
-
-### Task 4: Comprehensive Documentation
-
-**Goal**: Create complete, user-friendly documentation
-
-**Files to Create**:
-- `/README.md` - Main repository README
-- `/backend/README.md` - Backend-specific docs
-- `/frontend/README.md` - Frontend-specific docs
-- `/DEPLOYMENT.md` - Deployment guide
-- `/USAGE.md` - User guide
-- `/CONTRIBUTING.md` - Contribution guidelines (if open source)
-- `/ARCHITECTURE.md` - Architecture documentation
-
-**Prerequisites**: Task 3 complete
-
-**Implementation Steps**:
-
-1. **Main README.md**:
-   - Project overview and description
-   - Features list
-   - Architecture diagram
-   - Quick start guide
-   - Prerequisites
-   - Links to detailed documentation
-   - Screenshots/demo GIF
-   - License information
-   - Acknowledgments
-
-2. **DEPLOYMENT.md**:
-   - Detailed deployment instructions
-   - Prerequisites (AWS account, CLI tools)
-   - Step-by-step backend deployment:
-     - Configuring SAM parameters
-     - Running sam build and deploy
-     - Verifying deployment
-   - Step-by-step frontend deployment:
-     - Building the app
-     - Deploying to hosting (S3, Netlify, Vercel, etc.)
-     - Configuring environment variables
-   - Post-deployment verification
-   - Troubleshooting common issues
-   - Cost estimation
-   - Cleanup instructions (delete stack)
-
-3. **USAGE.md**:
-   - User guide for end users
-   - How to generate images:
-     - Enter prompt
-     - Adjust parameters
-     - Generate and wait
-   - How to use gallery
-   - How to enhance prompts
-   - Keyboard shortcuts
-   - Tips for best results
-   - FAQs
-
-4. **ARCHITECTURE.md**:
-   - System architecture overview
-   - Component descriptions:
-     - Frontend (Vite React)
-     - Backend (Lambda)
-     - Storage (S3)
-     - CDN (CloudFront)
-     - API (API Gateway)
-   - Data flow diagrams
-   - Model registry and routing logic
-   - Job management and polling
-   - Design decisions (reference Phase-0)
-   - Technology stack
-
-5. **Backend and Frontend READMEs**:
-   - Development setup
-   - Running locally
-   - Testing
-   - Building
-   - Deploying
-   - Code structure
-   - Key files and their purposes
-
-6. **CONTRIBUTING.md** (if open source):
-   - How to contribute
-   - Code style guidelines
-   - Pull request process
-   - Issue reporting
-   - Development workflow
-
-**Verification Checklist**:
-- [ ] README.md is comprehensive and clear
-- [ ] DEPLOYMENT.md has step-by-step instructions
-- [ ] USAGE.md helps end users
-- [ ] ARCHITECTURE.md explains system design
-- [ ] All docs are well-formatted (proper markdown)
-- [ ] Links work (no broken links)
-- [ ] Screenshots/diagrams included
-- [ ] No sensitive information in docs
-
-**Testing Instructions**:
-- Have someone unfamiliar with project read docs
-- Verify they can understand and follow instructions
-- Test deployment guide on fresh AWS account
-- Check all links
-- Spell check all documents
-
-**Commit Message Template**:
-```
-docs: create comprehensive project documentation
-
-- Add main README with overview and quick start
-- Create DEPLOYMENT.md with step-by-step guide
-- Add USAGE.md user guide
-- Document architecture in ARCHITECTURE.md
-- Add backend and frontend specific docs
-- Include troubleshooting and FAQs
-```
-
-**Estimated Tokens**: ~5,000
-
----
-
-### Task 5: Final Testing and Bug Fixes
-
-**Goal**: Final round of testing and fix all remaining bugs
-
-**Files to Modify**:
-- Any files with bugs
-
-**Prerequisites**: Tasks 1-4 complete
-
-**Implementation Steps**:
-
-1. **Create comprehensive test checklist**:
-   - List every feature
-   - List every user flow
-   - List every edge case
-   - Assign testing priority (P0, P1, P2)
-
-2. **Execute test plan**:
-   - Test each item on checklist
-   - Note any bugs or issues
-   - Categorize bugs by severity:
-     - **Critical**: Blocks usage, data loss, security
-     - **Major**: Feature doesn't work, poor UX
-     - **Minor**: Cosmetic, rare edge case
-
-3. **Fix all critical and major bugs**:
-   - Create GitHub issues (or bug tracking system)
-   - Prioritize critical bugs
-   - Fix all critical before proceeding
-   - Fix major bugs if time allows
-   - Document known minor bugs for later
-
-4. **Regression testing**:
-   - After fixing bugs, test full system again
-   - Verify fixes don't break other features
-   - Run integration tests again
-
-5. **User acceptance testing** (if possible):
-   - Get real users to test the system
-   - Observe their usage
-   - Collect feedback
-   - Fix usability issues
-
-6. **Create bug tracker**:
-   - GitHub Issues (if using GitHub)
-   - Document known bugs
-   - Label by severity
-   - Assign to future milestones
-
-**Verification Checklist**:
-- [ ] All critical bugs fixed
-- [ ] All major bugs fixed or documented
-- [ ] Regression testing passed
-- [ ] User feedback incorporated (if applicable)
-- [ ] Known bugs documented in issue tracker
-
-**Testing Instructions**:
-- Execute full test plan systematically
-- Test on multiple browsers and devices
-- Test with different network conditions
-- Test edge cases and error scenarios
-- Collect and analyze user feedback
-
-**Commit Message Template**:
-```
-fix: comprehensive bug fixing from final testing
-
-- Fix critical bugs (list bugs)
-- Fix major bugs (list bugs)
-- Document known minor bugs in issue tracker
-- Pass regression testing
-- Incorporate user feedback
-```
-
-**Estimated Tokens**: ~3,000
-
----
-
-### Task 6: Deployment Verification
-
-**Goal**: Verify deployment process and production readiness
-
-**Files to Create**:
-- `/.env.production.example` - Production environment variables template
-- `/PRODUCTION_CHECKLIST.md` - Pre-deployment checklist
-
-**Prerequisites**: Task 5 complete
-
-**Implementation Steps**:
-
-1. **Create production environment config**:
-   - Backend: Production SAM parameters
-   - Frontend: Production .env file
-   - Verify all secrets are configured
-   - Verify API endpoints are correct
-
-2. **Deploy to production environment**:
-   - Follow DEPLOYMENT.md instructions
-   - Deploy backend to production AWS account
-   - Build and deploy frontend to production hosting
-   - Configure custom domain (if applicable)
-   - Set up SSL/TLS certificates
-   - Configure DNS
-
-3. **Production smoke testing**:
-   - Test each API endpoint in production
-   - Generate test images
-   - Verify images saved to S3
-   - Verify CloudFront serving images
-   - Test frontend end-to-end
-   - Verify gallery works
-   - Test all features in production
-
-4. **Monitoring and logging setup**:
-   - Verify CloudWatch logs are working
-   - Set up CloudWatch alarms:
-     - Lambda errors
-     - High Lambda duration
-     - API Gateway 5xx errors
-     - High S3 costs
-   - Set up logging for frontend (Sentry, LogRocket, etc.)
-   - Configure SNS notifications for alerts
-
-5. **Create production checklist**:
-   - Pre-deployment checks:
-     - All tests pass
-     - Documentation updated
-     - Secrets configured
-     - Monitoring set up
-   - Deployment steps
-   - Post-deployment verification
-   - Rollback plan
-
-6. **Create runbook**:
-   - Common operations:
-     - Deploying updates
-     - Checking logs
-     - Troubleshooting errors
-     - Scaling (if needed)
-   - Emergency procedures:
-     - Rollback deployment
-     - Handle outages
-     - Contact information
-
-**Verification Checklist**:
-- [ ] Production environment configured
-- [ ] Backend deployed to production
-- [ ] Frontend deployed to production
-- [ ] Custom domain configured (if applicable)
-- [ ] SSL/TLS working
-- [ ] Production smoke tests pass
-- [ ] Monitoring and alarms set up
-- [ ] Production checklist created
-- [ ] Runbook documented
-
-**Testing Instructions**:
-- Deploy to production
-- Run full smoke test
-- Verify monitoring (trigger test alarm)
-- Verify logging (check CloudWatch logs)
-- Test rollback procedure
-- Verify custom domain and SSL
-
-**Commit Message Template**:
-```
-chore: production deployment and verification
-
-- Configure production environment
-- Deploy backend and frontend to production
-- Set up CloudWatch monitoring and alarms
-- Create production deployment checklist
-- Document runbook for operations
-- Verify production deployment with smoke tests
-```
-
-**Estimated Tokens**: ~3,000
-
----
-
-## Phase Verification
-
-### Complete Phase Checklist
-
-Before considering the project complete, verify:
-
-- [ ] All integration tests pass
-- [ ] Security review complete, vulnerabilities fixed
-- [ ] Performance benchmarks met
-- [ ] Comprehensive documentation complete
-- [ ] All critical and major bugs fixed
-- [ ] Production deployment successful
-- [ ] Monitoring and alerting configured
-- [ ] Runbook and operational docs complete
-
-### Final Acceptance Criteria
-
-**Functionality**:
-- [ ] User can generate images from multiple models
-- [ ] Gallery displays and loads past generations
-- [ ] Prompt enhancement works
-- [ ] Rate limiting prevents abuse
-- [ ] Content filtering blocks inappropriate prompts
-- [ ] All UI features work (sounds, animations, etc.)
-
-**Quality**:
-- [ ] No critical bugs
-- [ ] Performance meets benchmarks
-- [ ] Security vulnerabilities addressed
-- [ ] Accessible (WCAG AA compliance)
-- [ ] Works on all major browsers
-- [ ] Responsive on mobile and desktop
-
-**Documentation**:
-- [ ] README is clear and comprehensive
-- [ ] Deployment guide is accurate and complete
-- [ ] User guide helps end users
-- [ ] Architecture is documented
-- [ ] Code is commented where necessary
-
-**Operations**:
-- [ ] Deployed to production successfully
-- [ ] Monitoring and logging working
-- [ ] Alarms configured
-- [ ] Runbook available for operations
-- [ ] Rollback plan tested
-
----
-
-## Project Completion
-
-Once all tasks in Section 4 are complete and all verification criteria met:
-
-**Celebrate!** You've successfully built pixel-prompt-complete, a fully serverless text-to-image generation platform with:
-- Dynamic model registry supporting multiple AI providers
-- Async job processing with real-time updates
-- Modern React frontend with full feature parity
-- Comprehensive gallery system
-- Professional deployment infrastructure
-- Production-ready documentation
-
-### Next Steps (Post-Launch)
-
-**Maintenance**:
-- Monitor usage and errors
-- Address user feedback
-- Fix bugs as reported
-- Keep dependencies updated
-
-**Enhancements** (Future):
-- Add more AI models (Hunyuan, Qwen, etc.)
-- Implement user authentication (Cognito)
-- Add image-to-image generation
-- Create model comparison view
-- Add batch generation
-- Implement job history/management
-- Add usage analytics
-
-**Community** (if open source):
-- Accept pull requests
-- Review issues
-- Update documentation
-- Build community
-
----
-
-## Congratulations!
-
-The pixel-prompt-complete distribution is now complete, tested, documented, and deployed. This represents a production-ready, scalable, and maintainable system that combines the best of the pixel-prompt ecosystem into a unified serverless application.
+## Review Feedback (Iteration 1)
+
+### Overall Assessment
+
+**Phase 2 Implementation: 70% Complete** - Strong foundation established, but critical user-facing components missing.
+
+### Verification Summary (Tools Used)
+
+- `Glob` to verify file existence across frontend and backend
+- `Bash npm test -- --run` executed: 170 tests passing, 4 integration test failures
+- `Bash pytest tests/unit/` executed: 27 tests passing (with environment-related import errors, not code issues)
+- `Read` to inspect implementation quality of log.py, retry.py, ErrorBoundary.jsx, correlation.js
+- `Grep` to verify correlation ID propagation throughout codebase
+- `git log --format='%s' -15` to verify commit message conventions
+
+### Tasks 1-5: ✓ EXCELLENT IMPLEMENTATION
+
+**Verified with tools:**
+- ✓ Task 1: `log.py`, `logger.py`, `test_log_endpoint.py` all exist and well-implemented
+- ✓ Task 2: `logger.js`, `correlation.js`, tests exist and passing
+- ✓ Task 3: `ErrorBoundary.jsx`, `ErrorFallback.jsx`, 10 tests passing
+- ✓ Task 4: X-Correlation-ID headers propagated, integration tests exist
+- ✓ Task 5: `retry.py` with exponential backoff, 27 retry tests passing
+
+**Code Quality Observations:**
+- Structured logging with proper validation
+- Error boundary with correlation ID logging
+- Retry logic distinguishes retryable vs permanent errors
+- All commits follow conventional format
+- Integration tests demonstrate end-to-end flows
+
+### Task 6: Improved User-Facing Error Messages ✗ MISSING
+
+> **Consider:** The plan at lines 454-556 specifies creating three key files for user-facing error messages. When running `Glob "frontend/src/utils/errorMessages.js"`, what result did you get?
+>
+> **Reflect:** Looking at line 459, the plan requires `frontend/src/components/common/ErrorMessage.jsx` - a reusable error component with retry buttons. Does this file exist in your codebase?
+>
+> **Think about:** The success criteria on line 720 states "User error messages are clear and actionable." Without the ErrorMessage component and errorMessages mapping, how are users currently experiencing errors? Are they seeing raw HTTP status codes or generic messages?
+>
+> **Consider:** The plan line 486 specifies `backend/src/utils/error_responses.py` for standardized error response structure. When checking `ls backend/src/utils/`, is this file present?
+>
+> **Reflect:** Without the error message mapping from Task 6, when a user hits a rate limit (429), do they see a helpful message like "Rate limit exceeded. Please wait 45 minutes and try again" or a generic error?
+
+**Action Required:**
+- Create `frontend/src/utils/errorMessages.js` with status code to message mapping
+- Create `frontend/src/components/common/ErrorMessage.jsx` component with:
+  - Props for errorCode, errorMessage, retry callback
+  - Conditional retry button (show for 429, 500, 503; hide for 400, 404)
+  - Appropriate icons (⚠️ warning, ❌ error, ℹ️ info)
+- Create `backend/src/utils/error_responses.py` with standardized response format
+- Update all backend endpoints to use standardized error responses
+- Write tests for error message component
+
+### Task 7: Documentation and Testing ◐ PARTIAL
+
+**What exists (verified with tools):**
+- ✓ `ERROR_HANDLING.md` exists with comprehensive architecture documentation
+- ✓ `test_correlation_ids.py` integration tests exist
+- ✓ `TESTING.md` updated for frontend
+
+**Missing documentation:**
+
+> **Consider:** The plan lines 564-567 specifies creating `docs/TROUBLESHOOTING.md` - a user troubleshooting guide. When running `Glob "docs/TROUBLESHOOTING.md"`, what result did you get?
+>
+> **Reflect:** The plan line 582 requires documenting "CloudWatch Insights queries for developers." Without TROUBLESHOOTING.md, how would a developer search CloudWatch Logs for a specific correlation ID?
+>
+> **Think about:** Lines 333-334 state: "Explain how to search CloudWatch Logs by correlation ID, Provide example CloudWatch Insights query." Where is this documented if not in TROUBLESHOOTING.md?
+
+**Action Required:**
+- Create `docs/TROUBLESHOOTING.md` with:
+  - User troubleshooting section (common error messages and solutions)
+  - Developer troubleshooting section (using correlation IDs)
+  - CloudWatch Insights query examples
+  - Step-by-step guide to trace a request through the system
+
+### Integration Test Failures
+
+**Frontend test results verified with `npm test -- --run`:**
+- ✓ 170 tests passing
+- ✗ 4 integration tests failing (minor test implementation issues, not code bugs)
+
+> **Consider:** The integration test `generateFlow.test.jsx` is failing with "clear() is only supported on editable elements." Looking at line 59 of that test, you're trying to clear a slider element. Are sliders editable elements that support the `clear()` method?
+>
+> **Think about:** For slider inputs, would using `fireEvent` to set the value directly be more appropriate than `user.clear()`?
+>
+> **Reflect:** The `errorHandling.test.jsx` is timing out waiting for error messages. Looking at the test timeout of 5000ms, is that sufficient for the error UI to appear, or should the timeout be adjusted?
+
+**Action Required:**
+- Fix integration test interactions with sliders (use appropriate API for range inputs)
+- Adjust timeouts if needed for error UI rendering
+- Ensure all 4 integration test files pass completely
+
+### Success Criteria Check
+
+From lines 714-723:
+- [x] Error boundaries prevent white screen crashes (✓ Verified: ErrorBoundary.jsx exists with 10 passing tests)
+- [x] All frontend errors logged to CloudWatch (✓ Verified: logger.js sends to /log endpoint)
+- [x] Correlation IDs trace requests end-to-end (✓ Verified: X-Correlation-ID in frontend, extracted in backend)
+- [x] S3 operations retry on transient errors (✓ Verified: retry.py with exponential backoff, 27 tests passing)
+- [ ] User error messages are clear and actionable (**FAIL** - Task 6 components missing)
+- [ ] CloudWatch Insights queries work as documented (**PARTIAL** - Queries not in TROUBLESHOOTING.md)
+- [ ] All error scenario integration tests pass (**FAIL** - 4 integration tests failing)
+- [ ] Staging environment verification complete (**N/A** - Phase 3 prerequisite)
+
+**Phase Completion:** 5 out of 7 tasks complete (71%)
+- ✓ Task 1: Backend Logging Endpoint
+- ✓ Task 2: Frontend Error Logging Utility
+- ✓ Task 3: React Error Boundaries
+- ✓ Task 4: Correlation ID Tracing
+- ✓ Task 5: S3 Retry Logic
+- ✗ Task 6: Improved User-Facing Error Messages (0% - all files missing)
+- ◐ Task 7: Documentation (60% - ERROR_HANDLING.md exists, TROUBLESHOOTING.md missing)
+
+**Overall Phase 2 Status:** ❌ **NOT APPROVED** - Core infrastructure excellent, user-facing polish incomplete
+
+### Commit Quality ✓ EXCELLENT
+
+**Verified with `git log --format='%s' -15`:**
+- All commits follow conventional format: `type(scope): description`
+- Clear categorization: feat, test, docs, fix
+- Descriptive messages explaining what was implemented
+- Proper scope identification (frontend, backend)
+
+### Next Steps to Complete Phase 2
+
+1. **Implement Task 6 (highest priority - user-facing):**
+   - Create errorMessages.js mapping
+   - Create ErrorMessage.jsx component
+   - Create error_responses.py backend utility
+   - Update endpoints to use standardized errors
+   - Test error message display for all error types
+
+2. **Complete Task 7 documentation:**
+   - Create TROUBLESHOOTING.md with CloudWatch Insights queries
+   - Document correlation ID tracing workflow
+   - Add examples for common troubleshooting scenarios
+
+3. **Fix integration test failures:**
+   - Update slider interaction in generateFlow.test.jsx
+   - Adjust timeouts in errorHandling.test.jsx
+   - Verify all integration tests pass
+
+4. **Verification:**
+   - Run full test suite: `npm test -- --run` (all tests passing)
+   - Manually trigger each error type to verify messages
+   - Verify TROUBLESHOOTING.md queries work in CloudWatch (or document for Phase 3)

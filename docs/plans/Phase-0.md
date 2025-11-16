@@ -1,589 +1,723 @@
 # Phase 0: Architecture & Design Decisions
 
-**READ THIS PHASE BEFORE STARTING IMPLEMENTATION**
+## Overview
 
-This phase documents the foundational architectural decisions, design patterns, and conventions that apply across all implementation phases. Refer back to this document when making implementation choices.
+This document outlines foundational architecture decisions, design patterns, and technical choices that apply across all implementation phases. Read this completely before starting any implementation phase to understand the technical context and rationale behind specific approaches.
 
----
+## Architecture Decision Records (ADRs)
 
-## Architecture Overview
+### ADR-001: Vitest for Frontend Testing
 
-### System Architecture
+**Decision:** Use Vitest as the frontend testing framework instead of Jest.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         User Browser                         │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │         Vite React Frontend (Self-Hosted)            │  │
-│  │  - Prompt input & parameter controls                  │  │
-│  │  - Job submission & status polling                    │  │
-│  │  - Image grid display (9 models parallel)             │  │
-│  │  - Gallery browser for historical images              │  │
-│  └────────────┬─────────────────────────────────────────┘  │
-└───────────────┼─────────────────────────────────────────────┘
-                │
-                │ HTTPS (CORS enabled)
-                ↓
-┌───────────────────────────────────────────────────────────────┐
-│                    AWS Cloud Infrastructure                   │
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │  API Gateway HTTP API                                    ││
-│  │  - POST /generate (create job)                           ││
-│  │  - GET /status/{jobId} (poll status)                     ││
-│  │  - POST /enhance (prompt enhancement)                    ││
-│  │  - CORS: Allow all origins                               ││
-│  └─────────────┬────────────────────────────────────────────┘│
-│                │                                              │
-│                ↓                                              │
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │  Lambda Function (Python 3.12)                           ││
-│  │  - Dynamic model registry (variable model count)         ││
-│  │  - Intelligent API routing (provider auto-detection)     ││
-│  │  - Parallel model execution (threading)                  ││
-│  │  - Job lifecycle management                              ││
-│  │  - Rate limiting & content moderation                    ││
-│  │  Environment Variables:                                  ││
-│  │    MODEL_COUNT, MODEL_1_NAME, MODEL_1_KEY, ...           ││
-│  │    PROMPT_MODEL_INDEX, GLOBAL_LIMIT, IP_LIMIT            ││
-│  └─────┬──────────────────────┬─────────────────────────────┘│
-│        │                      │                               │
-│        ↓                      ↓                               │
-│  ┌─────────────┐       ┌──────────────────────────┐          │
-│  │  S3 Bucket  │       │  External AI APIs        │          │
-│  │             │       │  - OpenAI (DALL-E 3)     │          │
-│  │  /jobs/     │       │  - Stability AI (SD)     │          │
-│  │  /{jobId}/  │       │  - BFL (Flux models)     │          │
-│  │  status.json│       │  - Google (Gemini/Imagen)│          │
-│  │             │       │  - Recraft (v3)          │          │
-│  │  /group-    │       │  - AWS Bedrock (Nova)    │          │
-│  │  images/    │       └──────────────────────────┘          │
-│  │  /{target}/ │                                              │
-│  │  /{model}-  │                                              │
-│  │  {ts}.json  │                                              │
-│  └──────┬──────┘                                              │
-│         │                                                     │
-│         ↓                                                     │
-│  ┌──────────────────────────────────────────────────────────┐│
-│  │  CloudFront Distribution                                 ││
-│  │  - Low-latency image delivery                            ││
-│  │  - HTTPS endpoint for S3 objects                         ││
-│  └──────────────────────────────────────────────────────────┘│
-└───────────────────────────────────────────────────────────────┘
-```
+**Rationale:**
+- Native Vite integration with zero configuration needed
+- 2-10x faster than Jest for Vite projects
+- Better ESM (ECMAScript Modules) support
+- Uses same `vite.config.js` for both dev and test
+- Compatible with Jest API, so React Testing Library works identically
+- Smaller ecosystem but growing rapidly with strong community
 
-### Data Flow
+**Implications:**
+- Install `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`
+- Test files use `.test.jsx` or `.spec.jsx` extensions
+- Configuration in `vite.config.js` under `test` property
+- Use `describe`, `it`, `expect` API (same as Jest)
 
-**Image Generation Request:**
-1. User enters prompt + parameters → clicks "Generate"
-2. Frontend calls `POST /generate` with payload
-3. Lambda creates job ID, saves initial status to S3 (`jobs/{jobId}/status.json`)
-4. Lambda returns `{jobId}` immediately (< 1 second response)
-5. Lambda spawns threads for each configured model (parallel execution)
-6. Each thread calls external AI API → receives base64 image
-7. Each thread saves image to S3 (`group-images/{target}/{model}-{timestamp}.json`)
-8. Each thread updates job status with completion percentage
-9. Frontend polls `GET /status/{jobId}` every 2 seconds
-10. Frontend displays images as they complete (progressive loading)
-
-**Gallery Loading:**
-1. Frontend loads gallery on mount
-2. Fetches folder list from S3 (`group-images/` prefix with delimiter)
-3. For each folder (timestamp), fetches one random image as preview
-4. User clicks preview → fetches all 9 images from that folder
-5. Displays in grid matching model order
+**Alternatives Considered:**
+- Jest: More mature but slower and requires complex Vite configuration
+- Cypress Component Testing: Too heavy for unit tests
 
 ---
 
-## Design Decisions & Rationale
+### ADR-002: CloudWatch for Error Logging (No External Services)
 
-### ADR 001: Single Lambda vs Microservices
+**Decision:** Use AWS CloudWatch Logs for all error logging and monitoring, avoiding third-party services like Sentry or LogRocket.
 
-**Decision**: Use single unified Lambda function for all operations (image generation, prompt enhancement, status checks)
+**Rationale:**
+- **Public repo constraint:** Free and accessible to all contributors without requiring external accounts
+- Already integrated with Lambda backend (no additional setup)
+- Frontend can send logs to backend endpoint that writes to CloudWatch
+- Supports structured logging with JSON
+- Built-in retention policies and log querying (CloudWatch Insights)
+- No monthly limits or pricing tiers to manage
+- Keeps all infrastructure within AWS ecosystem
 
-**Rationale**:
-- Simpler deployment (one SAM template, one function to manage)
-- Shared code for model registry, S3 clients, rate limiting
-- Lambda can handle parallel execution with threading
-- Reduces cold start count (one function warm vs many)
-- Easier debugging and logging
+**Implications:**
+- Backend needs new `/log` endpoint for frontend error reporting
+- Frontend errors sent as POST requests to backend
+- Use correlation IDs to trace requests across frontend/backend
+- CloudWatch Insights queries replace Sentry dashboards
+- No fancy UI, but sufficient for debugging and monitoring
+- Users must have AWS console access to view logs
 
-**Tradeoffs**:
-- Larger package size (mitigated by Lambda Layers if needed)
-- Slightly longer cold starts (acceptable for user-facing app)
-- All operations share same timeout (15 min max - sufficient)
-
-**Alternative Considered**: Separate Lambdas per model (rejected due to complexity and operational overhead)
-
----
-
-### ADR 002: S3 for Job Status vs DynamoDB
-
-**Decision**: Store job status as JSON files in S3 (`jobs/{jobId}/status.json`)
-
-**Rationale**:
-- Simpler architecture (one storage service for status + images)
-- No additional AWS service costs (S3 free tier generous)
-- Easy to inspect/debug (download JSON file)
-- Sufficient performance for polling pattern (2s interval)
-- Natural TTL via S3 lifecycle policies
-
-**Tradeoffs**:
-- Slower than DynamoDB (acceptable latency for 2s polling)
-- No atomic updates (mitigated by single writer per job)
-- No querying capabilities (not needed for this use case)
-
-**Alternative Considered**: DynamoDB (rejected to minimize service dependencies and costs)
+**Alternatives Considered:**
+- Sentry: Excellent but requires account signup; not accessible for open-source
+- LogRocket: Premium pricing, session replay overkill for this project
+- console.log only: Insufficient for production debugging
 
 ---
 
-### ADR 003: Dynamic Model Registry Implementation
+### ADR-003: Manual Load Testing Scripts (Not Automated in CI/CD)
 
-**Decision**: Configure models via SAM parameters (MODEL_COUNT, MODEL_N_NAME, MODEL_N_KEY), parse at Lambda initialization, route via pattern matching with generic fallback
+**Decision:** Provide documented manual load testing scripts using Artillery or k6, but do not run them automatically in CI/CD pipeline.
 
-**Rationale**:
-- Flexibility: Deploy with 3 or 20 models without code changes
-- Simplicity: Model config is just name + API key
-- Intelligent: Auto-detect provider from model name patterns
-- Extensible: Generic fallback handler for unknown models
+**Rationale:**
+- Load tests with 100 concurrent users can take 5-10 minutes
+- Adds significant time and AWS costs to every deployment
+- Results vary based on Lambda cold starts and external API availability
+- Manual execution allows controlled testing environment (pre-warmed Lambdas)
+- Users deploying their own instances can run when needed
+- CI/CD focuses on functional correctness, not performance validation
 
-**Implementation Pattern**:
-```python
-# At Lambda initialization
-MODEL_COUNT = int(os.environ.get('MODEL_COUNT', 9))
-MODELS = []
-for i in range(1, MODEL_COUNT + 1):
-    name = os.environ.get(f'MODEL_{i}_NAME')
-    key = os.environ.get(f'MODEL_{i}_KEY')
-    MODELS.append({'name': name, 'key': key, 'provider': detect_provider(name)})
+**Implications:**
+- Create `scripts/loadtest/` directory with Artillery YAML configs
+- Document how to run: `npm run loadtest` in package.json
+- Results saved to `PERFORMANCE.md` manually
+- Include smoke test (10 users) in deployment verification, not full load test
+- CI/CD remains fast (< 10 minutes total)
 
-def detect_provider(model_name):
-    # Pattern matching logic
-    if 'dalle' in model_name.lower() or 'gpt' in model_name.lower():
-        return 'openai'
-    elif 'gemini' in model_name.lower():
-        return 'google_gemini'
-    # ... etc
-    return 'generic'
-```
-
-**Tradeoffs**:
-- Pattern matching may fail for ambiguous names (mitigated by generic fallback)
-- Adding new providers requires code update (acceptable - infrequent)
-
-**Alternative Considered**: Hardcoded 9 models (rejected - not flexible enough)
+**Alternatives Considered:**
+- Automated in CI: Too slow and expensive for every PR
+- No load testing: Missing critical production validation
+- Hybrid (light automation + heavy manual): Considered, but complexity not worth it
 
 ---
 
-### ADR 004: Async Job Pattern with Polling
+### ADR-004: Skip OpenAPI Spec (Markdown Docs Sufficient)
 
-**Decision**: Async request-response pattern where Lambda returns job ID immediately, frontend polls status endpoint
+**Decision:** Do not create OpenAPI 3.0 specification or Swagger UI. Existing markdown documentation in `API_INTEGRATION.md` is sufficient.
 
-**Rationale**:
-- Better UX: User gets immediate feedback (job accepted)
-- Progressive loading: Show images as they complete, not all at once
-- Avoids timeouts: API Gateway has 30s limit, image generation takes 30-90s
-- Resilient: Frontend can reconnect and continue polling after disconnect
+**Rationale:**
+- `API_INTEGRATION.md` already documents all 5 endpoints comprehensively
+- OpenAPI spec adds maintenance burden (keeping YAML in sync with code)
+- Swagger UI deployment adds infrastructure complexity
+- API is simple enough (5 endpoints) that interactive docs not necessary
+- Public repo benefits from lower barrier to entry (no extra tools to learn)
 
-**Status Schema**:
-```json
-{
-  "jobId": "uuid-v4",
-  "status": "in_progress",
-  "createdAt": "ISO-8601",
-  "totalModels": 9,
-  "completedModels": 3,
-  "results": [
-    {"model": "DALL-E 3", "status": "completed", "imageUrl": "s3://...", "completedAt": "..."},
-    {"model": "Gemini 2.0", "status": "in_progress"},
-    {"model": "Imagen 3.0", "status": "error", "error": "API timeout"}
-  ],
-  "prompt": "...",
-  "parameters": {"steps": 28, "guidance": 5}
-}
-```
+**Implications:**
+- No OpenAPI YAML file
+- No Swagger UI deployment or static page
+- API documentation remains in markdown only
+- Any changes to API require updating `API_INTEGRATION.md`
 
-**Polling Strategy**:
-- Interval: 2 seconds
-- Timeout: 5 minutes (kill polling after 5 min if no completion)
-- Exponential backoff on errors (2s → 4s → 8s)
-
-**Tradeoffs**:
-- More API calls (acceptable - HTTP API is cheap)
-- Requires client-side polling logic (standard pattern)
-
-**Alternative Considered**: WebSockets (rejected - adds complexity, HTTP API doesn't support natively)
+**Alternatives Considered:**
+- OpenAPI with static Swagger UI: Adds complexity without sufficient value
+- Postman collections: Requires external tool, inconsistent with "free only" philosophy
 
 ---
 
-### ADR 005: Parallel Model Execution Strategy
+### ADR-005: GitHub Actions for CI/CD (Public Repo Free Tier)
 
-**Decision**: Use Python threading (`concurrent.futures.ThreadPoolExecutor`) within single Lambda invocation
+**Decision:** Use GitHub Actions for all CI/CD automation, leveraging the free tier for public repositories (2000 minutes/month).
 
-**Rationale**:
-- Native Python solution (no additional AWS services)
-- Efficient resource usage (I/O bound operations - waiting on external APIs)
-- Simple error handling (catch exceptions per thread)
-- Shared context (job status, S3 client)
+**Rationale:**
+- Public repos get free unlimited minutes for Linux runners
+- Native GitHub integration (no external CI tool accounts)
+- YAML-based workflow configuration in `.github/workflows/`
+- Built-in secrets management for AWS credentials and API keys
+- Supports matrix builds for testing multiple Node/Python versions
+- Can trigger on PR, push, or manual dispatch
 
-**Implementation Pattern**:
-```python
-from concurrent.futures import ThreadPoolExecutor, as_completed
+**Implications:**
+- Workflow files: `test.yml` (run tests), `deploy.yml` (deploy to AWS)
+- Use GitHub Secrets for AWS credentials (document required secrets in README)
+- Separate workflows for frontend and backend testing
+- SAM CLI commands in GitHub Actions to deploy
+- Use `aws-actions/configure-aws-credentials` action for authentication
 
-def process_job(job_id, prompt, params, models):
-    with ThreadPoolExecutor(max_workers=len(models)) as executor:
-        futures = {
-            executor.submit(generate_image, job_id, model, prompt, params): model
-            for model in models
-        }
-
-        for future in as_completed(futures):
-            model = futures[future]
-            try:
-                result = future.result()
-                update_job_status(job_id, model, 'completed', result)
-            except Exception as e:
-                update_job_status(job_id, model, 'error', str(e))
-```
-
-**Configuration**:
-- Lambda memory: 3008 MB (for parallel processing)
-- Lambda timeout: 15 minutes (max allowed)
-- Max workers: Equal to model count (e.g., 9 threads for 9 models)
-
-**Tradeoffs**:
-- Higher Lambda memory costs (acceptable - pay for value)
-- Risk of timeout if all models are slow (mitigated by 15 min limit)
-
-**Alternative Considered**: Step Functions fan-out (rejected - overengineered for this use case)
+**Alternatives Considered:**
+- GitLab CI: Not needed, repo is on GitHub
+- CircleCI: Requires external account
+- AWS CodePipeline: More complex setup, overkill for this project
 
 ---
 
-### ADR 006: Rate Limiting Strategy
+### ADR-006: CloudFormation Template Enhancements for Easy Public Deployment
 
-**Decision**: Maintain existing S3-based rate limiting from `pixel-prompt-lambda`
+**Decision:** Enhance SAM `template.yaml` to simplify deployment for external users, including automated script to inject CloudFormation outputs into frontend `.env` file.
 
-**Rationale**:
-- Proven implementation already exists
-- No additional infrastructure needed
-- Granular control (global + per-IP limits)
-- IP whitelist support for trusted users
+**Rationale:**
+- **Public repo goal:** Users should deploy in under 30 minutes
+- Manual copy-pasting API endpoint URL is error-prone
+- CloudFormation outputs already contain all required values
+- Bash script can automate: `sam deploy` → parse outputs → write `.env` → deploy frontend
+- Reduces friction for contributors and users trying the project
 
-**Implementation**:
-- Global limit: Configurable via `GLOBAL_LIMIT` env var (requests per hour)
-- IP limit: Configurable via `IP_LIMIT` env var (requests per day per IP)
-- Storage: `{bucket}/rate-limit/ratelimit.json`
-- Cleanup: Automatic via time-windowed checks
+**Implications:**
+- Create `scripts/deploy.sh` for one-command deployment
+- Script runs `sam deploy`, extracts outputs (API endpoint, S3 bucket, CloudFront URL)
+- Writes `frontend/.env` with `VITE_API_ENDPOINT` automatically
+- Document script usage in `README.md` and `DEPLOYMENT.md`
+- Include `.env.example` with placeholder values for reference
 
-**Tradeoffs**:
-- S3 as database is unconventional (but works for low scale)
-- Potential race conditions with concurrent requests (acceptable - eventual consistency)
-
-**Alternative Considered**: Redis/ElastiCache (rejected - overkill and expensive)
-
----
-
-### ADR 007: Frontend State Management
-
-**Decision**: Use React hooks (useState, useEffect, useContext) without external state library
-
-**Rationale**:
-- Sufficient for application complexity
-- No additional dependencies (smaller bundle)
-- Easier for engineers to understand (standard React)
-- Performance adequate (< 100 components)
-
-**State Structure**:
-```javascript
-// Global context (if needed)
-const AppContext = {
-  models: [], // Configured model names
-  apiEndpoint: ''
-}
-
-// Component state
-- currentJob: {jobId, status, results[]}
-- galleryFolders: []
-- selectedGallery: null
-- prompt: ''
-- parameters: {steps, guidance, control}
-- loadingStatus: Array(9).fill(false)
-```
-
-**Tradeoffs**:
-- Prop drilling for deeply nested components (mitigated by composition)
-- No time-travel debugging (not needed)
-
-**Alternative Considered**: Redux (rejected - overengineered)
+**Alternatives Considered:**
+- Manual deployment: Too error-prone, poor user experience
+- Terraform instead of SAM: More complex, CloudFormation is AWS-native
+- CDK: Requires TypeScript knowledge, SAM is simpler for this use case
 
 ---
 
-### ADR 008: Image Storage Format
+### ADR-007: React Error Boundaries for Frontend Resilience
 
-**Decision**: Store images as JSON files containing base64-encoded image + metadata
+**Decision:** Implement React Error Boundaries to catch component errors and prevent white screen of death, with graceful fallback UI.
 
-**Rationale**:
-- Matches existing `pixel-prompt-lambda` implementation
-- Single file contains all info (image + prompt + params + model)
-- Easy to fetch and parse (one S3 request per image)
-- CloudFront can cache JSON responses
+**Rationale:**
+- Uncaught errors in React crash the entire app (blank screen)
+- Error boundaries catch errors in child components during render, lifecycle, and constructors
+- Provides fallback UI ("Something went wrong") instead of blank screen
+- Logs errors to CloudWatch for debugging
+- Required for production-grade React applications
+- No external library needed (built-in React feature)
 
-**Schema**:
-```json
-{
-  "output": "base64-encoded-image-data",
-  "model": "DALL-E 3",
-  "prompt": "vivid description...",
-  "steps": 28,
-  "guidance": 5,
-  "target": "2025-11-15-14-30-45",
-  "timestamp": "ISO-8601",
-  "NSFW": false
-}
-```
+**Implications:**
+- Create `ErrorBoundary.jsx` component wrapping main app sections
+- Fallback UI shows friendly error message with refresh button
+- Log error stack trace to backend `/log` endpoint
+- Test error boundaries with intentionally broken components
+- Document error boundary placement in component tree
 
-**Path Structure**:
-- `group-images/{target}/{model}-{timestamp}.json`
-- Target: Timestamp of generation request (groups all 9 models together)
-- Model: Normalized model name
-- Timestamp: Individual image completion time
-
-**Tradeoffs**:
-- Larger files than raw images (base64 encoding overhead ~33%)
-- JSON parsing required (fast in JavaScript)
-
-**Alternative Considered**: Separate image files (.png) + metadata (.json) (rejected - two fetches needed)
+**Alternatives Considered:**
+- No error handling: Unacceptable for production
+- try/catch in every component: Error boundaries are React best practice
+- External library (react-error-boundary): Adds dependency for minimal value
 
 ---
 
-## Tech Stack
+### ADR-008: Request Correlation IDs for Distributed Tracing
 
-### Backend
-- **Runtime**: Python 3.12 (Lambda managed runtime)
-- **Framework**: AWS SAM (CloudFormation extension)
-- **Dependencies**:
-  - `boto3`: AWS SDK (S3, Bedrock)
-  - `requests`: HTTP client for external APIs
-  - `Pillow`: Image processing
-  - `openai`: OpenAI SDK
-  - `google-genai`: Google Gemini/Imagen SDK
-  - Standard library: `json`, `uuid`, `datetime`, `concurrent.futures`, `threading`
+**Decision:** Implement correlation IDs (UUIDs) generated by frontend and passed through entire request chain (frontend → API Gateway → Lambda → CloudWatch).
+
+**Rationale:**
+- Multi-model parallel generation creates complex execution flows
+- Debugging requires tracing a single user request across multiple Lambda invocations
+- CloudWatch Insights can filter logs by correlation ID
+- Frontend errors can be correlated with backend errors
+- Industry best practice for distributed systems
+- Minimal implementation cost (UUID generation + header passing)
+
+**Implications:**
+- Frontend generates UUID on each API call, passes as `X-Correlation-ID` header
+- Backend extracts header and includes in all log statements
+- Lambda logs to CloudWatch with structured JSON: `{"correlationId": "...", "message": "..."}`
+- Error logs include correlation ID for easy filtering
+- Document correlation ID usage in troubleshooting guide
+
+**Alternatives Considered:**
+- No tracing: Debugging becomes extremely difficult in production
+- AWS X-Ray: Too complex for this project's needs
+- OpenTelemetry: Overkill for simple correlation
+
+---
+
+### ADR-009: S3 Retry Logic with Exponential Backoff
+
+**Decision:** Implement automatic retry logic for S3 operations (PutObject, GetObject) with exponential backoff (3 retries: 1s, 2s, 4s).
+
+**Rationale:**
+- S3 occasionally has transient errors (503 Slow Down, 500 Internal Error)
+- Retrying with backoff significantly improves reliability
+- boto3 has built-in retry logic, but explicit retries provide better control
+- Failed uploads should not fail entire job (partial results still valuable)
+- Aligns with AWS best practices for S3 operations
+
+**Implications:**
+- Wrap S3 `put_object` and `get_object` calls in retry decorator
+- Log each retry attempt with correlation ID
+- After 3 retries, mark model as failed but continue with other models
+- Include retry count in CloudWatch metrics
+- Document S3 error handling in TROUBLESHOOTING.md
+
+**Alternatives Considered:**
+- No retries: Poor reliability, users see intermittent failures
+- boto3 default retries only: Less control over backoff strategy
+- Infinite retries: Can cause timeouts and user frustration
+
+---
+
+### ADR-010: Lambda Layers for Dependency Optimization
+
+**Decision:** Extract heavy Python dependencies (Pillow, boto3, requests) into Lambda Layer to reduce deployment package size and improve cold start times.
+
+**Rationale:**
+- Current deployment package includes all dependencies (~50MB)
+- Lambda cold starts load entire package into memory
+- Layers are cached separately and loaded faster
+- Reduces deployment time (only code changes, not dependencies)
+- Layer can be shared across multiple Lambda functions if needed
+
+**Implications:**
+- Create `layers/python-deps/` directory with requirements
+- Build layer: `pip install -r requirements.txt -t python/`
+- Update `template.yaml` to define and reference layer
+- Layer ARN used in Lambda function configuration
+- Document layer build process in DEPLOYMENT.md
+
+**Alternatives Considered:**
+- No layers: Slower cold starts and larger deployments
+- Separate layer per dependency: Over-optimization, management overhead
+- Lambda containers: Overkill for this use case
+
+---
+
+## Tech Stack Summary
 
 ### Frontend
-- **Build Tool**: Vite 5.x (fast dev server, optimized builds)
-- **Framework**: React 18.x (functional components, hooks)
-- **Language**: JavaScript (ES6+, no TypeScript to reduce complexity)
-- **HTTP Client**: `fetch` API (native browser, no axios needed)
-- **Styling**: CSS Modules or styled-components (decide in Phase 2, Section 1)
-- **Dependencies**:
-  - `react`, `react-dom`
-  - `react-router-dom`: Client-side routing (if needed)
-  - Minimal external deps (prefer native solutions)
+| Component | Technology | Version | Justification |
+|-----------|-----------|---------|---------------|
+| Framework | React | 18+ | Modern hooks, error boundaries, widespread adoption |
+| Build Tool | Vite | Latest | Fast HMR, native ESM, simple config |
+| Testing | Vitest | Latest | Vite-native, fast, Jest-compatible API |
+| Test Utils | React Testing Library | Latest | Best practice for component testing |
+| Styling | CSS Modules | N/A | Scoped styles, no runtime overhead |
+| State | Context API | Built-in | Sufficient for app size, no Redux needed |
+| HTTP Client | fetch | Native | No axios needed, native retries via wrapper |
+| Error Logging | CloudWatch via API | N/A | Free, AWS-native, no external accounts |
+
+### Backend
+| Component | Technology | Version | Justification |
+|-----------|-----------|---------|---------------|
+| Runtime | Python | 3.12 | Latest Lambda-supported version |
+| Framework | AWS Lambda | N/A | Serverless, auto-scaling, pay-per-use |
+| API | API Gateway HTTP | N/A | Simpler than REST API, lower latency |
+| Testing | pytest | Latest | Python standard, rich plugin ecosystem |
+| Storage | S3 + CloudFront | N/A | Scalable, CDN, low-cost |
+| Logging | CloudWatch Logs | N/A | Built-in Lambda integration |
+| Monitoring | CloudWatch Metrics | N/A | Lambda metrics, custom metrics |
 
 ### Infrastructure
-- **Compute**: AWS Lambda (3008 MB, 15 min timeout)
-- **Storage**: AWS S3 (Standard tier, lifecycle policies)
-- **CDN**: AWS CloudFront (default cache behavior)
-- **API**: AWS API Gateway HTTP API (cheaper than REST API)
-- **IaC**: AWS SAM / CloudFormation YAML
+| Component | Technology | Justification |
+|-----------|-----------|---------------|
+| IaC | AWS SAM / CloudFormation | AWS-native, simpler than Terraform for Lambda |
+| CI/CD | GitHub Actions | Free for public repos, native integration |
+| Security Scanning | npm audit, bandit | Built-in tools, no external services |
+| Load Testing | Artillery or k6 | Popular, scriptable, free |
+| Performance | Lighthouse CLI | Industry standard for web performance |
 
 ---
 
-## Shared Patterns & Conventions
+## Design Patterns & Conventions
 
-### Error Handling
+### Frontend Patterns
 
-**Backend (Lambda)**:
-- Always return HTTP 200 (errors in response body)
-- Error schema: `{"error": "message", "code": "ERROR_TYPE"}`
-- Log errors with context: `print(f"Error in {function}: {error}")`
-- Graceful degradation: Partial results better than total failure
-
-**Frontend**:
-- Display user-friendly messages (no stack traces)
-- Retry failed requests with exponential backoff
-- Show error state in UI (error icon, red border)
-
-### Commit Message Convention
-
-Follow Conventional Commits:
+#### Component Structure
 ```
-<type>(<scope>): <subject>
-
-<body>
+components/
+├── common/              # Reusable components (Button, Input, etc.)
+├── features/            # Feature-specific components
+│   ├── generation/      # GenerationPanel, PromptInput, etc.
+│   ├── gallery/         # GalleryBrowser, GalleryDetail, etc.
+│   └── errors/          # ErrorBoundary, ErrorFallback, etc.
+└── layout/              # Header, Footer, etc.
 ```
 
-**Types**:
-- `feat`: New feature
-- `fix`: Bug fix
-- `refactor`: Code restructuring (no behavior change)
-- `test`: Add/update tests
-- `docs`: Documentation only
-- `chore`: Build process, dependencies
+#### Testing Patterns
+```javascript
+// Component Test Template
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import MyComponent from './MyComponent';
 
-**Examples**:
-```
-feat(lambda): implement dynamic model registry
+describe('MyComponent', () => {
+  it('renders with default props', () => {
+    render(<MyComponent />);
+    expect(screen.getByRole('button')).toBeInTheDocument();
+  });
 
-- Parse MODEL_COUNT and MODEL_N_* env vars
-- Build models list at initialization
-- Add provider detection logic
-
-test(lambda): add tests for model registry parsing
-```
-
-### Testing Strategy
-
-**Backend Testing**:
-- **Unit Tests**: Test each handler function in isolation (mock external APIs)
-- **Integration Tests**: Test Lambda locally with `sam local invoke`
-- **Manual Tests**: Deploy to dev account, test end-to-end
-
-**Frontend Testing**:
-- **Component Tests**: Render components with mock props
-- **Integration Tests**: Test API client with mock responses
-- **Manual Tests**: Test in browser with real backend
-
-**Coverage Targets**:
-- Backend: 70%+ line coverage
-- Frontend: Focus on critical paths (job submission, polling, gallery)
-
-### Code Organization
-
-**Backend Directory Structure**:
-```
-backend/
-├── src/
-│   ├── lambda_function.py    # Main handler
-│   ├── models/
-│   │   ├── registry.py       # Model registry & detection
-│   │   └── handlers.py       # Provider-specific handlers
-│   ├── jobs/
-│   │   ├── manager.py        # Job lifecycle
-│   │   └── executor.py       # Parallel execution
-│   ├── api/
-│   │   ├── generate.py       # POST /generate logic
-│   │   ├── status.py         # GET /status logic
-│   │   └── enhance.py        # POST /enhance logic
-│   ├── utils/
-│   │   ├── s3.py             # S3 helpers
-│   │   ├── rate_limit.py     # Rate limiting
-│   │   └── content_filter.py # NSFW detection
-│   └── config.py             # Environment variable loading
-├── template.yaml             # SAM template
-├── requirements.txt          # Python dependencies
-└── tests/
+  it('handles user interaction', async () => {
+    const handleClick = vi.fn();
+    render(<MyComponent onClick={handleClick} />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+});
 ```
 
-**Frontend Directory Structure**:
+#### Error Boundary Pattern
+```javascript
+// Wrap sections of app independently
+<ErrorBoundary fallback={<ErrorFallback />}>
+  <GenerationPanel />
+</ErrorBoundary>
+<ErrorBoundary fallback={<ErrorFallback />}>
+  <GalleryBrowser />
+</ErrorBoundary>
 ```
-frontend/
-├── src/
-│   ├── main.jsx              # Entry point
-│   ├── App.jsx               # Root component
-│   ├── api/
-│   │   └── client.js         # API client (fetch wrapper)
-│   ├── components/
-│   │   ├── PromptInput.jsx
-│   │   ├── ParameterSliders.jsx
-│   │   ├── GenerateButton.jsx
-│   │   ├── ImageGrid.jsx
-│   │   ├── Gallery.jsx
-│   │   └── ...
-│   ├── hooks/
-│   │   ├── useJobPolling.js
-│   │   └── useGallery.js
-│   ├── utils/
-│   │   └── helpers.js
-│   └── assets/
-│       ├── images/
-│       ├── sounds/
-│       └── fonts/
-├── public/
-├── index.html
-├── vite.config.js
-└── package.json
+
+#### Correlation ID Pattern
+```javascript
+// Generate on API call
+import { v4 as uuidv4 } from 'uuid';
+
+const correlationId = uuidv4();
+fetch(url, {
+  headers: {
+    'X-Correlation-ID': correlationId,
+    'Content-Type': 'application/json'
+  }
+});
 ```
+
+---
+
+### Backend Patterns
+
+#### Testing Patterns
+```python
+# Integration Test Template
+import pytest
+import requests
+
+@pytest.fixture(scope="session")
+def api_endpoint():
+    return os.getenv("API_ENDPOINT")
+
+def test_generate_endpoint(api_endpoint):
+    """Test /generate endpoint with valid input"""
+    response = requests.post(
+        f"{api_endpoint}/generate",
+        json={"prompt": "test", "ip": "1.2.3.4"},
+        headers={"X-Correlation-ID": "test-123"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "jobId" in data
+    assert data["totalModels"] > 0
+```
+
+#### Retry Pattern
+```python
+import time
+from functools import wraps
+
+def retry_with_backoff(max_retries=3):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    wait_time = 2 ** attempt
+                    logger.warning(f"Retry {attempt+1}/{max_retries} after {wait_time}s: {e}")
+                    time.sleep(wait_time)
+        return wrapper
+    return decorator
+```
+
+#### Structured Logging Pattern
+```python
+import json
+import logging
+
+def log_structured(level, message, correlation_id=None, **kwargs):
+    log_data = {
+        "message": message,
+        "correlationId": correlation_id,
+        **kwargs
+    }
+    logger.log(level, json.dumps(log_data))
+```
+
+---
+
+## Testing Strategy
+
+### Coverage Targets
+- **Critical paths**: 70%+ (generate, status, enhance, gallery endpoints)
+- **Model handlers**: 80%+ (with mocked external APIs)
+- **Frontend components**: 60%+ (focus on user interactions)
+- **Integration tests**: All API endpoints covered
+- **Error paths**: All error boundaries and retry logic tested
+
+### Test Pyramid
+```
+       /\
+      /E2E\      ← Few (10%) - Manual smoke tests via PRODUCTION_CHECKLIST
+     /------\
+    /Integra.\   ← Some (30%) - API endpoint tests, user flow tests
+   /----------\
+  /   Unit     \  ← Many (60%) - Component tests, handler tests
+ /--------------\
+```
+
+### Testing Philosophy
+- **Fast**: Unit tests < 100ms, integration tests < 5s
+- **Isolated**: Use mocks/stubs for external APIs and S3
+- **Deterministic**: No flaky tests, consistent results
+- **Readable**: Test names describe behavior, not implementation
+
+### Mocking Strategy
+- **External AI APIs**: Mock with fixtures (sample image URLs)
+- **S3 Operations**: Use moto library for mocking boto3
+- **API Gateway**: Use requests-mock for frontend integration tests
+- **Time-dependent**: Use vitest `vi.useFakeTimers()` for polling tests
 
 ---
 
 ## Common Pitfalls to Avoid
 
-### Backend Pitfalls
+### Frontend
 
-1. **Forgetting to update job status on error**: Always update S3 status file in finally block
-2. **Not handling API timeouts**: Set reasonable timeouts for external API calls (30-60s)
-3. **Hardcoding bucket names**: Always use environment variables
-4. **Blocking the main thread**: Use threading for parallel work
-5. **Not validating input**: Check prompt length, parameter ranges before processing
-6. **Forgetting CORS**: API Gateway must have CORS enabled for browser requests
+1. **Error Boundary Placement**
+   - ❌ Don't: Wrap entire app in single error boundary
+   - ✅ Do: Multiple boundaries for independent sections
 
-### Frontend Pitfalls
+2. **Test Environment**
+   - ❌ Don't: Test implementation details (state variables, internal functions)
+   - ✅ Do: Test user-visible behavior (rendered output, interactions)
 
-1. **Not revoking blob URLs**: Memory leaks from creating blob URLs without cleanup
-2. **Infinite polling**: Always have timeout/escape condition for polling loops
-3. **Rendering base64 directly**: Convert to blob URL for better performance
-4. **Not handling partial results**: Display images as they complete, not all or nothing
-5. **Hardcoding API endpoint**: Use environment variables (Vite: `import.meta.env.VITE_API_ENDPOINT`)
+3. **Async Testing**
+   - ❌ Don't: Use `setTimeout` to wait for async updates
+   - ✅ Do: Use `waitFor`, `findBy` queries from Testing Library
+
+4. **Correlation IDs**
+   - ❌ Don't: Generate in API client, separate from component
+   - ✅ Do: Generate at call site, pass through context if needed
+
+### Backend
+
+1. **Lambda Timeouts**
+   - ❌ Don't: Wait for all models synchronously
+   - ✅ Do: Already using threading, ensure timeout < 900s
+
+2. **S3 Retries**
+   - ❌ Don't: Fail entire job on single S3 error
+   - ✅ Do: Retry with backoff, mark model failed, continue
+
+3. **Test Dependencies**
+   - ❌ Don't: Run tests against real AWS services
+   - ✅ Do: Mock boto3 with moto, external APIs with responses library
+
+4. **Logging**
+   - ❌ Don't: Use print() statements
+   - ✅ Do: Use logging library with structured JSON
+
+### Infrastructure
+
+1. **Secrets in Repo**
+   - ❌ Don't: Commit `.env` files or hardcode API keys
+   - ✅ Do: Use `.env.example` with placeholders, document required secrets
+
+2. **CloudFormation Parameters**
+   - ❌ Don't: Use Parameters for values that never change
+   - ✅ Do: Parameters only for secrets and environment-specific config
+
+3. **Deployment Script**
+   - ❌ Don't: Assume specific shell (zsh, bash)
+   - ✅ Do: Use POSIX-compliant scripts, test on Ubuntu
 
 ---
 
-## Environment Variable Schema
-
-### Backend (Lambda)
-
-**Required**:
-```bash
-MODEL_COUNT=9                      # Number of models configured
-MODEL_1_NAME=DALL-E 3             # Model name (for routing)
-MODEL_1_KEY=sk-xxx                # API key
-MODEL_2_NAME=Gemini 2.0
-MODEL_2_KEY=AIza...
-# ... repeat for MODEL_3 through MODEL_N
-
-PROMPT_MODEL_INDEX=2              # Which model to use for prompt enhancement (1-based)
-AWS_ID=AKIA...                    # AWS access key (for Bedrock)
-AWS_SECRET=xxx                    # AWS secret key
-GLOBAL_LIMIT=1000                 # Requests per hour (all IPs)
-IP_LIMIT=50                       # Requests per day (per IP)
-S3_BUCKET=pixel-prompt-complete   # Created by SAM template
-CLOUDFRONT_DOMAIN=xxx.cloudfront.net  # Created by SAM template
-```
-
-**Optional**:
-```bash
-IP_INCLUDE=1.2.3.4,5.6.7.8        # Whitelisted IPs (bypass rate limits)
-PERM_NEGATIVE_PROMPT=ugly, blurry # Negative prompt for Stable Diffusion
-```
+## Performance Optimization Guidelines
 
 ### Frontend
 
-```bash
-VITE_API_ENDPOINT=https://xxx.execute-api.us-west-2.amazonaws.com  # API Gateway URL
-```
+**Bundle Size Targets**
+- Total bundle: < 500 KB gzipped
+- Initial load: < 200 KB gzipped
+- Lazy-loaded chunks: < 100 KB each
 
----
+**Optimization Techniques**
+- Code splitting: Separate vendor bundle
+- Lazy loading: React.lazy() for Gallery, Admin sections
+- Image optimization: WebP format, responsive sizes
+- Tree shaking: Import only what's used
+- React.memo: Memoize expensive components (ImageCard)
 
-## Performance Targets
+### Backend
 
-- **API Response Time** (job creation): < 1 second
-- **Image Generation** (per model): 10-60 seconds (depends on external API)
-- **Total Job Time** (9 models parallel): 30-90 seconds
-- **Gallery Load Time**: < 5 seconds for 50 folders
-- **Frontend Bundle Size**: < 500 KB (gzipped)
+**Lambda Performance Targets**
+- Cold start: < 3 seconds
+- Warm invocation: < 500ms (excluding AI API calls)
+- Memory usage: < 2 GB (currently allocated 3 GB)
+
+**Optimization Techniques**
+- Lambda Layers: Reduce deployment package size
+- Reserved concurrency: Prevent cold starts during traffic spikes
+- Threading: Parallel model execution (already implemented)
+- S3 optimizations: Use CloudFront for reads, direct upload for writes
 
 ---
 
 ## Security Considerations
 
-1. **API Keys**: Stored as Lambda environment variables (encrypted at rest by AWS)
-2. **CORS**: Restrict origins in production (wildcard OK for MVP)
-3. **Rate Limiting**: Prevent abuse via global + per-IP limits
-4. **Content Filtering**: Block NSFW prompts before API calls
-5. **Input Validation**: Sanitize prompt (max length 1000 chars), validate parameters
-6. **S3 Bucket Policy**: Private bucket, CloudFront access only (OAI)
+### Public Repository Constraints
+
+1. **No Secrets in Code**
+   - Use environment variables for all API keys
+   - Document required secrets in README
+   - Provide `.env.example` with placeholders
+   - GitHub Secrets for CI/CD credentials
+
+2. **Dependency Scanning**
+   - Run `npm audit` in CI/CD, fail on high/critical
+   - Run `bandit` for Python security linting
+   - Keep dependencies updated (Dependabot)
+
+3. **IAM Least Privilege**
+   - Lambda execution role: only S3, CloudWatch, Bedrock
+   - CloudFront OAI: read-only S3 access
+   - No wildcard permissions (`*`)
+
+4. **Input Validation**
+   - Already implemented: content filtering, rate limiting
+   - Add: SQL injection protection (not applicable, no DB)
+   - Add: XSS protection (React escapes by default)
+
+---
+
+## File Structure - Current Codebase
+
+**Updated:** 2025-11-16 (Phase 1, Task 0 - Codebase Discovery)
+
+```
+pixel-prompt/
+├── frontend/
+│   ├── src/
+│   │   ├── api/                           # API client & integration
+│   │   │   ├── client.js                  # Main API client (5 functions)
+│   │   │   └── config.js                  # API configuration
+│   │   ├── components/                    # React components (17 total)
+│   │   │   ├── common/                    # Reusable components (6)
+│   │   │   │   ├── BreathingBackground.jsx
+│   │   │   │   ├── Container.jsx
+│   │   │   │   ├── Expand.jsx
+│   │   │   │   ├── Header.jsx
+│   │   │   │   ├── Footer.jsx
+│   │   │   │   └── LoadingSkeleton.jsx
+│   │   │   ├── gallery/                   # Gallery components (2)
+│   │   │   │   ├── GalleryBrowser.jsx
+│   │   │   │   └── GalleryPreview.jsx
+│   │   │   └── generation/                # Generation components (7)
+│   │   │       ├── GenerationPanel.jsx    # Main orchestrator
+│   │   │       ├── PromptInput.jsx
+│   │   │       ├── PromptEnhancer.jsx
+│   │   │       ├── ParameterSliders.jsx
+│   │   │       ├── GenerateButton.jsx
+│   │   │       ├── ImageCard.jsx
+│   │   │       └── ImageGrid.jsx
+│   │   ├── hooks/                         # Custom React hooks (4)
+│   │   │   ├── useJobPolling.js           # Status polling
+│   │   │   ├── useGallery.js              # Gallery state
+│   │   │   ├── useSound.js                # Sound effects
+│   │   │   └── useImageLoader.js          # Progressive loading
+│   │   ├── context/                       # Global state
+│   │   │   └── AppContext.jsx             # React Context API
+│   │   ├── utils/                         # Helper functions
+│   │   │   └── imageHelpers.js
+│   │   ├── App.jsx                        # Root component
+│   │   └── main.jsx                       # Entry point
+│   ├── public/                            # Static assets
+│   ├── vite.config.js                     # Build configuration
+│   ├── eslint.config.js                   # Linting rules
+│   └── package.json
+├── backend/
+│   ├── src/
+│   │   ├── lambda_function.py             # Main Lambda handler (5 routes)
+│   │   ├── config.py                      # Environment configuration
+│   │   ├── models/
+│   │   │   ├── registry.py                # Dynamic model registry
+│   │   │   └── handlers.py                # Provider handlers (8+ providers)
+│   │   ├── jobs/
+│   │   │   ├── manager.py                 # Job lifecycle management
+│   │   │   └── executor.py                # Parallel job execution
+│   │   ├── api/
+│   │   │   └── enhance.py                 # Prompt enhancement
+│   │   └── utils/
+│   │       ├── storage.py                 # S3 operations
+│   │       ├── rate_limit.py              # Rate limiting
+│   │       └── content_filter.py          # NSFW detection
+│   ├── tests/
+│   │   └── integration/
+│   │       └── test_api_endpoints.py      # 20+ integration tests
+│   ├── template.yaml                      # AWS SAM CloudFormation template
+│   └── requirements.txt
+├── docs/
+│   ├── plans/                             # Implementation plans
+│   └── CODEBASE_DISCOVERY.md              # Detailed structure documentation
+├── README.md
+├── SECURITY.md
+└── PRODUCTION_CHECKLIST.md
+```
+
+**Key Findings:**
+- **Frontend:** 25 source files (17 JSX + 8 JS) - **NO existing tests**
+- **Backend:** 14 Python modules - **1 integration test file with 20+ tests**
+- **API Endpoints:** 5 routes (generate, status, enhance, gallery/list, gallery/{id})
+- **Model Providers:** 8+ AI providers (OpenAI, Google Gemini, Google Imagen, Bedrock Nova, Bedrock SD, Stability AI, Black Forest, Recraft, Generic)
+
+See `docs/CODEBASE_DISCOVERY.md` for complete details on components, endpoints, and testing gaps.
+
+---
+
+## File Structure After Implementation
+
+```
+pixel-prompt/
+├── .github/
+│   └── workflows/
+│       ├── test.yml              # Run tests on PR
+│       ├── deploy-staging.yml    # Deploy to staging on merge
+│       └── deploy-prod.yml       # Deploy to prod on release
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   ├── features/
+│   │   │   │   ├── errors/
+│   │   │   │   │   ├── ErrorBoundary.jsx
+│   │   │   │   │   └── ErrorFallback.jsx
+│   │   │   │   └── ...
+│   │   │   └── layout/
+│   │   ├── __tests__/            # Component tests
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   └── integration/
+│   │   ├── utils/
+│   │   │   ├── logger.js         # CloudWatch logging
+│   │   │   └── correlation.js    # UUID generation
+│   │   └── ...
+│   ├── vite.config.js            # Updated with test config
+│   └── .env.example              # Template environment file
+├── backend/
+│   ├── src/
+│   │   ├── api/
+│   │   │   └── log.py            # New logging endpoint
+│   │   ├── utils/
+│   │   │   └── retry.py          # S3 retry decorator
+│   │   └── ...
+│   ├── layers/
+│   │   └── python-deps/          # Lambda Layer dependencies
+│   ├── tests/
+│   │   ├── unit/                 # New unit tests
+│   │   │   └── test_handlers.py
+│   │   └── integration/
+│   ├── template.yaml             # Enhanced with Layer
+│   └── ...
+├── scripts/
+│   ├── deploy.sh                 # One-command deployment
+│   └── loadtest/
+│       ├── artillery-config.yml
+│       └── README.md
+├── docs/
+│   ├── plans/                    # This directory
+│   ├── PERFORMANCE.md            # Performance benchmark results
+│   └── TROUBLESHOOTING.md        # Debugging guide
+└── PRODUCTION_CHECKLIST.md       # Updated with new steps
+```
 
 ---
 
 ## Next Steps
 
-Read through all phases (1-2) to understand the full implementation path, then begin with **[Phase 1: Complete Backend Implementation](Phase-1.md)**.
+After reviewing this Phase 0 document:
+1. Ensure all prerequisites are installed
+2. Understand the architecture decisions and their implications
+3. Read the testing strategy and patterns
+4. Proceed to Phase 1: Testing Foundation
+5. Reference this document whenever making technical decisions
+
+This foundation ensures consistent implementation across all phases and sets the project up for long-term maintainability.

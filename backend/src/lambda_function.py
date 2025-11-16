@@ -24,6 +24,10 @@ from utils.storage import ImageStorage
 from utils.rate_limit import RateLimiter
 from utils.content_filter import ContentFilter
 from api.enhance import PromptEnhancer
+from api.log import handle_log
+from utils.logger import StructuredLogger
+from utils import error_responses
+from uuid import uuid4
 
 # Initialize components at module level (Lambda container reuse)
 print("Initializing Lambda components...")
@@ -55,6 +59,26 @@ prompt_enhancer = PromptEnhancer(model_registry)
 print(f"Lambda initialization complete: {model_registry.get_model_count()} models configured")
 
 
+def extract_correlation_id(event):
+    """
+    Extract correlation ID from event headers.
+    Generates new UUID if not provided.
+
+    Args:
+        event: API Gateway event object
+
+    Returns:
+        str: Correlation ID
+    """
+    headers = event.get('headers', {})
+    correlation_id = headers.get('x-correlation-id') or headers.get('X-Correlation-ID')
+
+    if not correlation_id:
+        correlation_id = str(uuid4())
+
+    return correlation_id
+
+
 def lambda_handler(event, context):
     """
     Main Lambda handler function.
@@ -67,36 +91,41 @@ def lambda_handler(event, context):
     Returns:
         API Gateway response object with status code and body
     """
+    # Extract correlation ID from headers
+    correlation_id = extract_correlation_id(event)
+
     # Extract path and method from API Gateway event
     path = event.get('rawPath', event.get('path', ''))
     method = event.get('requestContext', {}).get('http', {}).get('method',
              event.get('httpMethod', ''))
 
-    # Log request metadata only (not full event to avoid credential leaks)
-    print(f"Request: {method} {path}")
+    # Log request with correlation ID
+    StructuredLogger.info(f"Request: {method} {path}", correlation_id=correlation_id)
 
     try:
         # Route based on path and method
         if path == '/generate' and method == 'POST':
-            return handle_generate(event)
+            return handle_generate(event, correlation_id)
         elif path.startswith('/status/') and method == 'GET':
-            return handle_status(event)
+            return handle_status(event, correlation_id)
         elif path == '/enhance' and method == 'POST':
-            return handle_enhance(event)
+            return handle_enhance(event, correlation_id)
+        elif path == '/log' and method == 'POST':
+            return handle_log_endpoint(event)
         elif path == '/gallery/list' and method == 'GET':
-            return handle_gallery_list(event)
+            return handle_gallery_list(event, correlation_id)
         elif path.startswith('/gallery/') and method == 'GET':
-            return handle_gallery_detail(event)
+            return handle_gallery_detail(event, correlation_id)
         else:
             return response(404, {'error': 'Not found', 'path': path, 'method': method})
 
     except Exception as e:
-        print(f"Error in lambda_handler: {str(e)}")
+        StructuredLogger.error(f"Error in lambda_handler: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
         return response(500, {'error': 'Internal server error'})
 
 
-def handle_generate(event):
+def handle_generate(event, correlation_id=None):
     """
     POST /generate - Create image generation job.
 
@@ -128,26 +157,24 @@ def handle_generate(event):
 
         # Validate input
         if not prompt or len(prompt) == 0:
-            return response(400, {'error': 'Prompt is required'})
+            return response(400, error_responses.prompt_required())
 
         if len(prompt) > 1000:
-            return response(400, {'error': 'Prompt too long (max 1000 characters)'})
+            return response(400, error_responses.prompt_too_long(max_length=1000))
 
         # Check rate limit
         is_limited = rate_limiter.check_rate_limit(ip)
         if is_limited:
-            return response(429, {
-                'error': 'Rate limit exceeded',
-                'message': 'Too many requests. Please try again later.'
-            })
+            # Calculate retry after (rate limiter uses 1 hour window for global limit)
+            return response(429, error_responses.rate_limit_exceeded(
+                retry_after=3600,  # 1 hour in seconds
+                limit_type="requests"
+            ))
 
         # Check content filter
         is_blocked = content_filter.check_prompt(prompt)
         if is_blocked:
-            return response(400, {
-                'error': 'Inappropriate content detected',
-                'message': 'Your prompt contains inappropriate content and cannot be processed.'
-            })
+            return response(400, error_responses.inappropriate_content())
 
         # Build parameters
         params = {
@@ -182,7 +209,12 @@ def handle_generate(event):
         thread.daemon = True
         thread.start()
 
-        print(f"Job {job_id} created and started in background")
+        StructuredLogger.info(
+            f"Job {job_id} created and started in background",
+            correlation_id=correlation_id,
+            jobId=job_id,
+            prompt=prompt[:100]  # Log first 100 chars of prompt
+        )
 
         # Return job ID immediately
         return response(200, {
@@ -192,14 +224,15 @@ def handle_generate(event):
         })
 
     except json.JSONDecodeError:
-        return response(400, {'error': 'Invalid JSON in request body'})
+        StructuredLogger.error("Invalid JSON in request body", correlation_id=correlation_id)
+        return response(400, error_responses.invalid_json())
     except Exception as e:
-        print(f"Error in handle_generate: {str(e)}")
+        StructuredLogger.error(f"Error in handle_generate: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
-        return response(500, {'error': 'Internal server error'})
+        return response(500, error_responses.internal_server_error())
 
 
-def handle_status(event):
+def handle_status(event, correlation_id=None):
     """
     GET /status/{jobId} - Get job status and results.
 
@@ -217,10 +250,7 @@ def handle_status(event):
         status = job_manager.get_job_status(job_id)
 
         if not status:
-            return response(404, {
-                'error': 'Job not found',
-                'jobId': job_id
-            })
+            return response(404, error_responses.job_not_found(job_id))
 
         # Add CloudFront URLs to image results
         for result in status.get('results', []):
@@ -230,12 +260,12 @@ def handle_status(event):
         return response(200, status)
 
     except Exception as e:
-        print(f"Error in handle_status: {str(e)}")
+        StructuredLogger.error(f"Error in handle_status: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
-        return response(500, {'error': 'Internal server error'})
+        return response(500, error_responses.internal_server_error())
 
 
-def handle_enhance(event):
+def handle_enhance(event, correlation_id=None):
     """
     POST /enhance - Enhance prompt using configured LLM.
 
@@ -255,18 +285,15 @@ def handle_enhance(event):
 
         # Validate input
         if not prompt or len(prompt) == 0:
-            return response(400, {'error': 'Prompt is required'})
+            return response(400, error_responses.prompt_required())
 
         if len(prompt) > 500:
-            return response(400, {'error': 'Prompt too long for enhancement (max 500 characters)'})
+            return response(400, error_responses.prompt_too_long(max_length=500))
 
         # Check content filter
         is_blocked = content_filter.check_prompt(prompt)
         if is_blocked:
-            return response(400, {
-                'error': 'Inappropriate content detected',
-                'message': 'Your prompt contains inappropriate content and cannot be processed.'
-            })
+            return response(400, error_responses.inappropriate_content())
 
         # Enhance prompt
         enhanced = prompt_enhancer.enhance_safe(prompt)
@@ -277,14 +304,14 @@ def handle_enhance(event):
         })
 
     except json.JSONDecodeError:
-        return response(400, {'error': 'Invalid JSON in request body'})
+        return response(400, error_responses.invalid_json())
     except Exception as e:
-        print(f"Error in handle_enhance: {str(e)}")
+        StructuredLogger.error(f"Error in handle_enhance: {str(e)}", correlation_id=correlation_id)
         traceback.print_exc()
-        return response(500, {'error': 'Internal server error'})
+        return response(500, error_responses.internal_server_error())
 
 
-def handle_gallery_list(event):
+def handle_gallery_list(event, correlation_id=None):
     """
     GET /gallery/list - List all galleries with preview images.
 
@@ -302,6 +329,7 @@ def handle_gallery_list(event):
     try:
         # Get list of gallery folders
         gallery_folders = image_storage.list_galleries()
+        StructuredLogger.info(f"Listing {len(gallery_folders)} galleries", correlation_id=correlation_id)
 
         # Build response with preview images
         galleries = []
@@ -341,7 +369,59 @@ def handle_gallery_list(event):
         return response(500, {'error': 'Internal server error'})
 
 
-def handle_gallery_detail(event):
+def handle_log_endpoint(event):
+    """
+    POST /log - Accept frontend error logs and write to CloudWatch.
+
+    Request body:
+        {
+            "level": "ERROR|WARNING|INFO|DEBUG",
+            "message": "error message",
+            "stack": "error stack trace (optional)",
+            "metadata": {"key": "value"} (optional)
+        }
+
+    Headers:
+        X-Correlation-ID: UUID for request tracing
+
+    Returns:
+        {"success": true, "message": "Log received successfully"}
+    """
+    try:
+        body = json.loads(event.get('body', '{}'))
+
+        # Get client IP
+        ip = event.get('requestContext', {}).get('http', {}).get('sourceIp', 'unknown')
+
+        # Check rate limit (lower limit for logging to prevent spam)
+        # Using 100 logs per hour per IP
+        is_limited = rate_limiter.check_rate_limit(ip)
+        if is_limited:
+            return response(429, {
+                'error': 'Rate limit exceeded',
+                'message': 'Too many log requests. Please try again later.'
+            })
+
+        # Extract correlation ID from headers
+        headers = event.get('headers', {})
+        correlation_id = headers.get('x-correlation-id') or headers.get('X-Correlation-ID')
+
+        # Handle log
+        result = handle_log(body, correlation_id, ip)
+
+        return response(200, result)
+
+    except json.JSONDecodeError:
+        return response(400, {'error': 'Invalid JSON in request body'})
+    except ValueError as e:
+        return response(400, {'error': str(e)})
+    except Exception as e:
+        print(f"Error in handle_log_endpoint: {str(e)}")
+        traceback.print_exc()
+        return response(500, {'error': 'Internal server error'})
+
+
+def handle_gallery_detail(event, correlation_id=None):
     """
     GET /gallery/{galleryId} - Get all images from a specific gallery.
 
@@ -363,6 +443,7 @@ def handle_gallery_detail(event):
         # Extract gallery ID from path
         path = event.get('rawPath', event.get('path', ''))
         gallery_id = path.split('/')[-1]
+        StructuredLogger.info(f"Fetching gallery: {gallery_id}", correlation_id=correlation_id)
 
         if not gallery_id or gallery_id == 'list':
             return response(400, {'error': 'Gallery ID is required'})
@@ -418,7 +499,7 @@ def response(status_code, body):
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With'
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Correlation-ID'
         },
         'body': json.dumps(body)
     }

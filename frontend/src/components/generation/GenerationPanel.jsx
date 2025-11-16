@@ -8,7 +8,9 @@ import { useApp } from '../../context/AppContext';
 import useJobPolling from '../../hooks/useJobPolling';
 import { generateImages } from '../../api/client';
 import PromptInput from './PromptInput';
+import RandomPromptButton from '../features/generation/RandomPromptButton';
 import PromptEnhancer from './PromptEnhancer';
+import ParameterPresets from '../features/generation/ParameterPresets';
 import ParameterSliders from './ParameterSliders';
 import GenerateButton from './GenerateButton';
 import ImageGrid from './ImageGrid';
@@ -119,17 +121,51 @@ function GenerationPanel() {
     }
   };
 
-  // Listen for Ctrl+Enter keyboard shortcut
+  // Listen for keyboard shortcuts
   useEffect(() => {
-    const handleGenerateTrigger = () => {
-      if (!isGenerating && prompt.trim()) {
-        handleGenerate();
+    const handleKeyDown = (e) => {
+      // Don't trigger shortcuts when typing in inputs
+      const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+
+      // Ctrl+Enter to generate
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isTyping) {
+        if (!isGenerating && prompt.trim()) {
+          handleGenerate();
+        }
+      }
+
+      // Ctrl+R for random prompt
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !isTyping) {
+        e.preventDefault(); // Prevent browser reload
+        if (!isGenerating) {
+          // Trigger via event for RandomPromptButton to handle
+          const event = new CustomEvent('random-prompt-trigger');
+          document.dispatchEvent(event);
+        }
+      }
+
+      // Ctrl+E for enhance prompt
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e' && !isTyping) {
+        e.preventDefault();
+        if (!isGenerating && prompt.trim()) {
+          // Trigger via event for PromptEnhancer to handle
+          const event = new CustomEvent('enhance-prompt-trigger');
+          document.dispatchEvent(event);
+        }
+      }
+
+      // Ctrl+Shift+D for download all images
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D' && !isTyping) {
+        e.preventDefault();
+        // Trigger via event for ImageGrid to handle
+        const event = new CustomEvent('download-all-trigger');
+        document.dispatchEvent(event);
       }
     };
 
-    document.addEventListener('generate-trigger', handleGenerateTrigger);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('generate-trigger', handleGenerateTrigger);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [prompt, isGenerating, parameters]);
 
@@ -157,9 +193,27 @@ function GenerationPanel() {
           disabled={isGenerating}
         />
 
-        <PromptEnhancer
-          currentPrompt={prompt}
-          onUsePrompt={setPrompt}
+        <div className={styles.promptActions}>
+          <RandomPromptButton
+            onSelectPrompt={setPrompt}
+            disabled={isGenerating}
+          />
+          <PromptEnhancer
+            currentPrompt={prompt}
+            onUsePrompt={setPrompt}
+            disabled={isGenerating}
+          />
+        </div>
+
+        <ParameterPresets
+          steps={parameters.steps}
+          guidance={parameters.guidance}
+          control={parameters.control}
+          onPresetSelect={(preset) => {
+            updateParameter('steps', preset.steps);
+            updateParameter('guidance', preset.guidance);
+            updateParameter('control', preset.control);
+          }}
           disabled={isGenerating}
         />
 

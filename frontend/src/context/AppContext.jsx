@@ -33,6 +33,7 @@ export function AppProvider({ children }) {
 
   // UI state
   const [isGenerating, setIsGenerating] = useState(false);
+  const [currentView, setCurrentView] = useState('generation'); // 'generation' | 'gallery'
 
   // Sound effects
   const { playSound, isMuted, toggleMute, setVolume, soundsLoaded } = useSound();
@@ -89,6 +90,8 @@ export function AppProvider({ children }) {
     // UI state
     isGenerating,
     setIsGenerating,
+    currentView,
+    setCurrentView,
 
     // Sound effects
     playSound,

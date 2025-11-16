@@ -1,9 +1,11 @@
 /**
  * ImageCard Component
  * Individual image card with loading states
+ * Memoized to prevent unnecessary re-renders in grid
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
+import { useToast } from '../../context/ToastContext';
 import { downloadImage } from '../../utils/imageHelpers';
 import styles from './ImageCard.module.css';
 
@@ -14,6 +16,7 @@ function ImageCard({
   error = null,
   onExpand
 }) {
+  const { success, error: errorToast } = useToast();
   const [imageError, setImageError] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
@@ -53,10 +56,10 @@ function ImageCard({
     if (image) {
       try {
         await navigator.clipboard.writeText(image);
-        alert('Image URL copied to clipboard!');
-      } catch (error) {
-        console.error('Failed to copy URL:', error);
-        alert('Failed to copy URL');
+        success('Image URL copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy URL:', err);
+        errorToast('Failed to copy URL');
       }
     }
   };
@@ -148,4 +151,6 @@ function ImageCard({
   );
 }
 
-export default ImageCard;
+// Memoize component to prevent re-renders when props haven't changed
+// This is especially important as ImageCard is rendered 9 times in a grid
+export default memo(ImageCard);
