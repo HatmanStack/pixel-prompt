@@ -571,52 +571,85 @@ def log_structured(level, message, correlation_id=None, **kwargs):
 
 ## File Structure - Current Codebase
 
-**NOTE:** This section will be updated during Phase 1, Task 0 (Codebase Discovery). Below is a high-level overview based on initial exploration:
+**Updated:** 2025-11-16 (Phase 1, Task 0 - Codebase Discovery)
 
 ```
 pixel-prompt/
 ├── frontend/
 │   ├── src/
-│   │   ├── api/             # API client & integration
-│   │   ├── components/      # React components (organized by feature)
-│   │   ├── hooks/           # Custom React hooks
-│   │   ├── context/         # Global state (AppContext)
-│   │   ├── utils/           # Helper functions
-│   │   ├── styles/          # CSS modules
-│   │   └── assets/          # Images, fonts, sounds
-│   ├── public/              # Static assets
-│   ├── vite.config.js       # Build configuration
-│   ├── eslint.config.js     # Linting rules
+│   │   ├── api/                           # API client & integration
+│   │   │   ├── client.js                  # Main API client (5 functions)
+│   │   │   └── config.js                  # API configuration
+│   │   ├── components/                    # React components (17 total)
+│   │   │   ├── common/                    # Reusable components (6)
+│   │   │   │   ├── BreathingBackground.jsx
+│   │   │   │   ├── Container.jsx
+│   │   │   │   ├── Expand.jsx
+│   │   │   │   ├── Header.jsx
+│   │   │   │   ├── Footer.jsx
+│   │   │   │   └── LoadingSkeleton.jsx
+│   │   │   ├── gallery/                   # Gallery components (2)
+│   │   │   │   ├── GalleryBrowser.jsx
+│   │   │   │   └── GalleryPreview.jsx
+│   │   │   └── generation/                # Generation components (7)
+│   │   │       ├── GenerationPanel.jsx    # Main orchestrator
+│   │   │       ├── PromptInput.jsx
+│   │   │       ├── PromptEnhancer.jsx
+│   │   │       ├── ParameterSliders.jsx
+│   │   │       ├── GenerateButton.jsx
+│   │   │       ├── ImageCard.jsx
+│   │   │       └── ImageGrid.jsx
+│   │   ├── hooks/                         # Custom React hooks (4)
+│   │   │   ├── useJobPolling.js           # Status polling
+│   │   │   ├── useGallery.js              # Gallery state
+│   │   │   ├── useSound.js                # Sound effects
+│   │   │   └── useImageLoader.js          # Progressive loading
+│   │   ├── context/                       # Global state
+│   │   │   └── AppContext.jsx             # React Context API
+│   │   ├── utils/                         # Helper functions
+│   │   │   └── imageHelpers.js
+│   │   ├── App.jsx                        # Root component
+│   │   └── main.jsx                       # Entry point
+│   ├── public/                            # Static assets
+│   ├── vite.config.js                     # Build configuration
+│   ├── eslint.config.js                   # Linting rules
 │   └── package.json
 ├── backend/
 │   ├── src/
-│   │   ├── lambda_function.py    # Main Lambda handler
-│   │   ├── config.py             # Environment configuration
+│   │   ├── lambda_function.py             # Main Lambda handler (5 routes)
+│   │   ├── config.py                      # Environment configuration
 │   │   ├── models/
-│   │   │   ├── registry.py       # Dynamic model registry
-│   │   │   └── handlers.py       # Provider handlers
+│   │   │   ├── registry.py                # Dynamic model registry
+│   │   │   └── handlers.py                # Provider handlers (8+ providers)
 │   │   ├── jobs/
-│   │   │   ├── manager.py        # Job lifecycle management
-│   │   │   └── executor.py       # Parallel job execution
+│   │   │   ├── manager.py                 # Job lifecycle management
+│   │   │   └── executor.py                # Parallel job execution
 │   │   ├── api/
-│   │   │   └── enhance.py        # Prompt enhancement
+│   │   │   └── enhance.py                 # Prompt enhancement
 │   │   └── utils/
-│   │       ├── storage.py        # S3 operations
-│   │       ├── rate_limit.py     # Rate limiting
-│   │       └── content_filter.py # NSFW detection
+│   │       ├── storage.py                 # S3 operations
+│   │       ├── rate_limit.py              # Rate limiting
+│   │       └── content_filter.py          # NSFW detection
 │   ├── tests/
 │   │   └── integration/
-│   │       └── test_api_endpoints.py
-│   ├── template.yaml         # AWS SAM CloudFormation template
+│   │       └── test_api_endpoints.py      # 20+ integration tests
+│   ├── template.yaml                      # AWS SAM CloudFormation template
 │   └── requirements.txt
 ├── docs/
-│   └── plans/                # This directory
+│   ├── plans/                             # Implementation plans
+│   └── CODEBASE_DISCOVERY.md              # Detailed structure documentation
 ├── README.md
 ├── SECURITY.md
 └── PRODUCTION_CHECKLIST.md
 ```
 
-**Discovery Task Required:** Each phase includes Task 0 to discover specific components, endpoints, and patterns relevant to that phase's work. This ensures implementer understands current structure before making changes.
+**Key Findings:**
+- **Frontend:** 25 source files (17 JSX + 8 JS) - **NO existing tests**
+- **Backend:** 14 Python modules - **1 integration test file with 20+ tests**
+- **API Endpoints:** 5 routes (generate, status, enhance, gallery/list, gallery/{id})
+- **Model Providers:** 8+ AI providers (OpenAI, Google Gemini, Google Imagen, Bedrock Nova, Bedrock SD, Stability AI, Black Forest, Recraft, Generic)
+
+See `docs/CODEBASE_DISCOVERY.md` for complete details on components, endpoints, and testing gaps.
 
 ---
 
