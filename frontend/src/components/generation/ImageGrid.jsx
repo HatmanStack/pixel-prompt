@@ -3,16 +3,21 @@
  * Grid layout for displaying 9 generated images
  * Optimized with useCallback to prevent breaking ImageCard memoization
  * Includes ImageModal for full-screen viewing with keyboard navigation
+ * Includes batch download for all completed images
  */
 
 import { useState, useCallback, useMemo } from 'react';
+import { useToast } from '../../context/ToastContext';
+import { downloadImage } from '../../utils/imageHelpers';
 import ImageCard from './ImageCard';
 import ImageModal from '../features/generation/ImageModal';
 import styles from './ImageGrid.module.css';
 
 function ImageGrid({ images, modelNames = [] }) {
+  const { success, error: errorToast, info } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Memoize image slots to prevent recreation on every render
   const imageSlots = useMemo(() => {
@@ -56,8 +61,58 @@ function ImageGrid({ images, modelNames = [] }) {
     setCurrentImageIndex(newIndex);
   }, []);
 
+  // Handle batch download of all completed images
+  const handleDownloadAll = useCallback(async () => {
+    if (isDownloading || completedImages.length === 0) return;
+
+    setIsDownloading(true);
+    info(`Downloading ${completedImages.length} images...`);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < completedImages.length; i++) {
+      const img = completedImages[i];
+      try {
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+        const safeModelName = img.model ? img.model.replace(/\s+/g, '-') : 'unknown';
+        await downloadImage(img.image, `pixel-prompt-${safeModelName}-${timestamp}.png`);
+        successCount++;
+        // Small delay to avoid overwhelming the browser
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (err) {
+        console.error(`Failed to download image from ${img.model}:`, err);
+        failCount++;
+      }
+    }
+
+    setIsDownloading(false);
+
+    if (failCount === 0) {
+      success(`Successfully downloaded ${successCount} images!`);
+    } else if (successCount > 0) {
+      info(`Downloaded ${successCount} images (${failCount} failed)`);
+    } else {
+      errorToast(`Failed to download images`);
+    }
+  }, [completedImages, isDownloading, success, errorToast, info]);
+
   return (
     <>
+      {/* Download All Button */}
+      {completedImages.length > 0 && (
+        <div className={styles.downloadAllContainer}>
+          <button
+            className={styles.downloadAllButton}
+            onClick={handleDownloadAll}
+            disabled={isDownloading}
+            aria-label={`Download all ${completedImages.length} images`}
+          >
+            {isDownloading ? '⏳ Downloading...' : `⬇ Download All (${completedImages.length})`}
+          </button>
+        </div>
+      )}
+
       <div className={styles.grid}>
         {imageSlots.map((slot, index) => (
           <ImageCard
