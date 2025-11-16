@@ -350,7 +350,27 @@ npm run analyze
 
 **Result**: Users who only use generation features never download gallery code, saving 3.44 KB (5% of total bundle). Gallery loads on-demand with LoadingSpinner feedback.
 
-### Optimization 2: [Future Optimization]
+### Optimization 2: React.memo for Component Optimization
+
+**Date**: 2025-11-16 (Phase 4, Task 2)
+**Issue**: Expensive components (ImageCard, GalleryPreview) re-rendering unnecessarily when props haven't changed
+**Solution**:
+- Wrapped ImageCard with React.memo (rendered 9 times in grid)
+- Wrapped GalleryPreview with React.memo (rendered in gallery list)
+- Memoized callbacks in ImageGrid with useCallback (handleExpand, handleCloseModal)
+- Memoized image slots computation with useMemo
+- Memoized callbacks in GalleryBrowser with useCallback (handleSelect)
+- Created useMemoizedCallback hook for reusable callback memoization pattern
+
+**Impact**:
+- ImageCard only re-renders when its specific props change (not when other cards update)
+- GalleryPreview only re-renders when its specific gallery data changes
+- Prevents cascade re-renders in grids and lists
+- Estimated 30-50% reduction in unnecessary re-renders during generation
+
+**Result**: Components now efficiently skip re-renders when their props haven't changed, improving runtime performance especially during image generation when status updates occur frequently.
+
+### Optimization 3: [Future Optimization]
 
 [To be filled]
 

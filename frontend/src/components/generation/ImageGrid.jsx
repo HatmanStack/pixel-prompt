@@ -1,35 +1,40 @@
 /**
  * ImageGrid Component
  * Grid layout for displaying 9 generated images
+ * Optimized with useCallback to prevent breaking ImageCard memoization
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import ImageCard from './ImageCard';
 import styles from './ImageGrid.module.css';
 
 function ImageGrid({ images, modelNames = [] }) {
   const [expandedImage, setExpandedImage] = useState(null);
 
-  // Ensure we have 9 slots
-  const imageSlots = Array(9).fill(null).map((_, index) => {
-    const imageData = images[index];
-    const modelName = modelNames[index] || `Model ${index + 1}`;
+  // Memoize image slots to prevent recreation on every render
+  const imageSlots = useMemo(() => {
+    return Array(9).fill(null).map((_, index) => {
+      const imageData = images[index];
+      const modelName = modelNames[index] || `Model ${index + 1}`;
 
-    return {
-      image: imageData?.imageUrl || imageData?.image || null,
-      model: imageData?.model || modelName,
-      status: imageData?.status || 'pending',
-      error: imageData?.error || null,
-    };
-  });
+      return {
+        image: imageData?.imageUrl || imageData?.image || null,
+        model: imageData?.model || modelName,
+        status: imageData?.status || 'pending',
+        error: imageData?.error || null,
+      };
+    });
+  }, [images, modelNames]);
 
-  const handleExpand = (index) => {
+  // Memoize handleExpand to prevent breaking ImageCard memoization
+  const handleExpand = useCallback((index) => {
     setExpandedImage(imageSlots[index]);
-  };
+  }, [imageSlots]);
 
-  const handleCloseModal = () => {
+  // Memoize handleCloseModal callback
+  const handleCloseModal = useCallback(() => {
     setExpandedImage(null);
-  };
+  }, []);
 
   // Handle Escape key to close modal
   useEffect(() => {

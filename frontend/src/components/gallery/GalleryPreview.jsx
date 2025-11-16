@@ -1,8 +1,10 @@
 /**
  * GalleryPreview Component
  * Preview card for a single gallery
+ * Memoized to prevent re-renders when other gallery items update
  */
 
+import { memo } from 'react';
 import PropTypes from 'prop-types';
 import styles from './GalleryPreview.module.css';
 
@@ -81,4 +83,6 @@ GalleryPreview.defaultProps = {
   isSelected: false,
 };
 
-export default GalleryPreview;
+// Memoize component to prevent re-renders when other gallery items update
+// Only re-renders when this specific gallery's data changes
+export default memo(GalleryPreview);

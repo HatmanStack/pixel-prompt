@@ -1,9 +1,10 @@
 /**
  * ImageCard Component
  * Individual image card with loading states
+ * Memoized to prevent unnecessary re-renders in grid
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { downloadImage } from '../../utils/imageHelpers';
 import styles from './ImageCard.module.css';
 
@@ -148,4 +149,6 @@ function ImageCard({
   );
 }
 
-export default ImageCard;
+// Memoize component to prevent re-renders when props haven't changed
+// This is especially important as ImageCard is rendered 9 times in a grid
+export default memo(ImageCard);

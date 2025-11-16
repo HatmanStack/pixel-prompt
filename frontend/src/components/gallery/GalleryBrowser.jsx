@@ -1,9 +1,10 @@
 /**
  * GalleryBrowser Component
  * Browse and select past image generation galleries
+ * Optimized with useCallback for GalleryPreview memoization
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import useGallery from '../../hooks/useGallery';
 import GalleryPreview from './GalleryPreview';
@@ -22,8 +23,8 @@ function GalleryBrowser({ onGallerySelect }) {
 
   const [selectedId, setSelectedId] = useState(null);
 
-  // Handle gallery selection
-  const handleSelect = async (gallery) => {
+  // Memoize gallery selection handler to prevent breaking GalleryPreview memoization
+  const handleSelect = useCallback(async (gallery) => {
     if (selectedId === gallery.id) {
       // Deselect if clicking the same gallery
       setSelectedId(null);
@@ -36,7 +37,7 @@ function GalleryBrowser({ onGallerySelect }) {
       setSelectedId(gallery.id);
       await loadGallery(gallery.id);
     }
-  };
+  }, [selectedId, clearSelection, loadGallery, onGallerySelect]);
 
   // Notify parent when gallery is loaded
   useEffect(() => {
