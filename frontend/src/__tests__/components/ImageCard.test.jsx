@@ -5,12 +5,18 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ToastProvider } from '../../context/ToastContext';
 import ImageCard from '../../components/generation/ImageCard';
 
 // Mock imageHelpers
 vi.mock('../../utils/imageHelpers', () => ({
   downloadImage: vi.fn()
 }));
+
+// Helper to render with ToastProvider
+const renderWithToast = (ui) => {
+  return render(<ToastProvider>{ui}</ToastProvider>);
+};
 
 describe('ImageCard', () => {
   const mockOnExpand = vi.fn();
@@ -20,29 +26,29 @@ describe('ImageCard', () => {
   });
 
   it('shows waiting state for pending status', () => {
-    render(<ImageCard status="pending" model="Test Model" />);
+    renderWithToast(<ImageCard status="pending" model="Test Model" />);
     expect(screen.getByText('Waiting...')).toBeInTheDocument();
   });
 
   it('shows generating state for loading status', () => {
-    render(<ImageCard status="loading" model="Test Model" />);
+    renderWithToast(<ImageCard status="loading" model="Test Model" />);
     expect(screen.getByText('Generating...')).toBeInTheDocument();
   });
 
   it('shows error state when status is error', () => {
-    render(<ImageCard status="error" model="Test Model" error="Generation failed" />);
+    renderWithToast(<ImageCard status="error" model="Test Model" error="Generation failed" />);
     expect(screen.getByText('Generation failed')).toBeInTheDocument();
     expect(screen.getByText('⚠')).toBeInTheDocument();
   });
 
   it('shows default error message when error prop is missing', () => {
-    render(<ImageCard status="error" model="Test Model" />);
+    renderWithToast(<ImageCard status="error" model="Test Model" />);
     expect(screen.getByText('Failed to load')).toBeInTheDocument();
   });
 
   it('displays image when status is completed', () => {
     const imageUrl = 'https://example.com/image.png';
-    render(<ImageCard status="completed" image={imageUrl} model="Test Model" />);
+    renderWithToast(<ImageCard status="completed" image={imageUrl} model="Test Model" />);
 
     const img = screen.getByAltText('Generated image from Test Model');
     expect(img).toBeInTheDocument();
@@ -50,17 +56,17 @@ describe('ImageCard', () => {
   });
 
   it('displays model name in footer', () => {
-    render(<ImageCard status="pending" model="DALL-E 3" />);
+    renderWithToast(<ImageCard status="pending" model="DALL-E 3" />);
     expect(screen.getByText('DALL-E 3')).toBeInTheDocument();
   });
 
   it('shows checkmark badge when status is completed', () => {
-    render(<ImageCard status="completed" image="test.png" model="Test Model" />);
+    renderWithToast(<ImageCard status="completed" image="test.png" model="Test Model" />);
     expect(screen.getByText('✓')).toBeInTheDocument();
   });
 
   it('does not show checkmark badge when status is not completed', () => {
-    render(<ImageCard status="pending" model="Test Model" />);
+    renderWithToast(<ImageCard status="pending" model="Test Model" />);
     expect(screen.queryByText('✓')).not.toBeInTheDocument();
   });
 
@@ -131,19 +137,19 @@ describe('ImageCard', () => {
   });
 
   it('is not a button when status is pending', () => {
-    render(<ImageCard status="pending" model="Test Model" />);
+    renderWithToast(<ImageCard status="pending" model="Test Model" />);
     const button = screen.queryByRole('button');
     expect(button).not.toBeInTheDocument();
   });
 
   it('is not a button when status is error', () => {
-    render(<ImageCard status="error" model="Test Model" error="Failed" />);
+    renderWithToast(<ImageCard status="error" model="Test Model" error="Failed" />);
     const button = screen.queryByRole('button');
     expect(button).not.toBeInTheDocument();
   });
 
   it('shows error state when image fails to load', () => {
-    render(<ImageCard status="completed" image="broken.png" model="Test Model" />);
+    renderWithToast(<ImageCard status="completed" image="broken.png" model="Test Model" />);
 
     const img = screen.getByAltText('Generated image from Test Model');
 
@@ -155,13 +161,13 @@ describe('ImageCard', () => {
   });
 
   it('has lazy loading attribute on image', () => {
-    render(<ImageCard status="completed" image="test.png" model="Test Model" />);
+    renderWithToast(<ImageCard status="completed" image="test.png" model="Test Model" />);
     const img = screen.getByAltText('Generated image from Test Model');
     expect(img).toHaveAttribute('loading', 'lazy');
   });
 
   it('handles missing model name gracefully', () => {
-    render(<ImageCard status="completed" image="test.png" />);
+    renderWithToast(<ImageCard status="completed" image="test.png" />);
     // Should not crash, model name might be empty or undefined
     const card = screen.getByRole('button');
     expect(card).toBeInTheDocument();
@@ -169,7 +175,7 @@ describe('ImageCard', () => {
 
   it('does not crash when onExpand is not provided', async () => {
     const user = userEvent.setup();
-    render(<ImageCard status="completed" image="test.png" model="Test Model" />);
+    renderWithToast(<ImageCard status="completed" image="test.png" model="Test Model" />);
 
     const card = screen.getByRole('button');
     await user.click(card);
