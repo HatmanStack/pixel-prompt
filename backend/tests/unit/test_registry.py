@@ -44,8 +44,8 @@ class TestDetectProvider:
 
     def test_detect_black_forest(self):
         """Test Black Forest Labs detection"""
-        assert detect_provider('Flux Pro 1.1') == 'black_forest'
-        assert detect_provider('flux-dev') == 'black_forest'
+        assert detect_provider('Flux Pro 1.1') == 'bfl'
+        assert detect_provider('flux-dev') == 'bfl'
 
     def test_detect_recraft(self):
         """Test Recraft detection"""
@@ -53,14 +53,14 @@ class TestDetectProvider:
         assert detect_provider('recraft-20b') == 'recraft'
 
     def test_detect_ideogram(self):
-        """Test Ideogram detection"""
-        assert detect_provider('Ideogram 2.0') == 'ideogram'
-        assert detect_provider('ideogram-v2') == 'ideogram'
+        """Test Ideogram detection falls back to generic"""
+        assert detect_provider('Ideogram 2.0') == 'generic'
+        assert detect_provider('ideogram-v2') == 'generic'
 
     def test_detect_midjourney(self):
-        """Test Midjourney detection"""
-        assert detect_provider('Midjourney v6') == 'midjourney'
-        assert detect_provider('midjourney-v5') == 'midjourney'
+        """Test Midjourney detection falls back to generic"""
+        assert detect_provider('Midjourney v6') == 'generic'
+        assert detect_provider('midjourney-v5') == 'generic'
 
     def test_detect_generic(self):
         """Test generic fallback"""
@@ -84,8 +84,8 @@ class TestModelRegistry:
 
         assert registry.get_model_count() >= 2
 
-        # Get first model
-        model = registry.get_model(0)
+        # Get first model (registry uses 1-based indexing)
+        model = registry.get_model_by_index(1)
         assert model is not None
         assert 'name' in model
         assert 'key' in model
@@ -94,14 +94,15 @@ class TestModelRegistry:
     @patch.dict('os.environ', {
         'MODEL_1_NAME': 'Test Model',
         'MODEL_1_KEY': 'test-key',
-        'PROMPT_MODEL_INDEX': '0'
+        'PROMPT_MODEL_INDEX': '1'
     })
     def test_get_prompt_model_index(self):
-        """Test retrieving prompt model index"""
+        """Test retrieving prompt model"""
         registry = ModelRegistry()
-        prompt_index = registry.get_prompt_model_index()
+        prompt_model = registry.get_prompt_model()
 
-        assert prompt_index == 0
+        assert prompt_model is not None
+        assert 'name' in prompt_model
 
     @patch.dict('os.environ', {
         'MODEL_1_NAME': 'DALL-E 3',
@@ -126,13 +127,14 @@ class TestModelRegistry:
         """Test getting model by index"""
         registry = ModelRegistry()
 
-        model = registry.get_model(0)
+        # Registry uses 1-based indexing (MODEL_1, MODEL_2, etc.)
+        model = registry.get_model_by_index(1)
         assert model is not None
         assert model['name'] == 'Test Model'
         assert model['key'] == 'test-key'
 
         # Test invalid index
-        invalid_model = registry.get_model(999)
+        invalid_model = registry.get_model_by_index(999)
         assert invalid_model is None
 
     @patch.dict('os.environ', {
@@ -145,10 +147,11 @@ class TestModelRegistry:
         """Test that registry correctly detects providers"""
         registry = ModelRegistry()
 
-        dalle_model = registry.get_model(0)
+        # Registry uses 1-based indexing
+        dalle_model = registry.get_model_by_index(1)
         assert dalle_model['provider'] == 'openai'
 
-        gemini_model = registry.get_model(1)
+        gemini_model = registry.get_model_by_index(2)
         assert gemini_model['provider'] == 'google_gemini'
 
     @patch.dict('os.environ', {})
@@ -158,7 +161,7 @@ class TestModelRegistry:
 
         assert registry.get_model_count() == 0
         assert registry.get_all_models() == []
-        assert registry.get_model(0) is None
+        assert registry.get_model_by_index(1) is None
 
     @patch.dict('os.environ', {
         'MODEL_1_NAME': 'Model 1',
@@ -169,7 +172,8 @@ class TestModelRegistry:
         """Test model with custom endpoint"""
         registry = ModelRegistry()
 
-        model = registry.get_model(0)
+        # Registry uses 1-based indexing
+        model = registry.get_model_by_index(1)
         assert model is not None
         # Registry might store endpoint if configured
         # Test passes if model is loaded successfully

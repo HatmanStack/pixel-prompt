@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict
-from models.handlers import get_handler
+from src.models.handlers import get_handler
 
 
 class JobExecutor:

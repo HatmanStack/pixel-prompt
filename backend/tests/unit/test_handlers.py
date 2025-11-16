@@ -12,11 +12,11 @@ from src.models.handlers import (
     handle_bedrock_nova,
     handle_bedrock_sd,
     handle_stability,
-    handle_black_forest,
+    handle_bfl,
     handle_recraft,
-    handle_generic_openai
+    handle_generic
 )
-from .fixtures.api_responses import (
+from tests.unit.fixtures.api_responses import (
     OPENAI_DALLE3_RESPONSE,
     GOOGLE_GEMINI_RESPONSE,
     BEDROCK_NOVA_RESPONSE,
@@ -214,7 +214,7 @@ class TestOtherHandlers:
             status=200
         )
 
-        result = handle_black_forest(mock_model_config, sample_prompt, sample_params)
+        result = handle_bfl(mock_model_config, sample_prompt, sample_params)
 
         assert result is not None
         assert 'status' in result or 'error' in result
@@ -252,7 +252,7 @@ class TestOtherHandlers:
             status=200
         )
 
-        result = handle_generic_openai(mock_model_config, sample_prompt, sample_params)
+        result = handle_generic(mock_model_config, sample_prompt, sample_params)
 
         assert result is not None
         assert 'status' in result or 'error' in result
