@@ -10,6 +10,7 @@ import { generateImages } from '../../api/client';
 import PromptInput from './PromptInput';
 import RandomPromptButton from '../features/generation/RandomPromptButton';
 import PromptEnhancer from './PromptEnhancer';
+import ParameterPresets from '../features/generation/ParameterPresets';
 import ParameterSliders from './ParameterSliders';
 import GenerateButton from './GenerateButton';
 import ImageGrid from './ImageGrid';
@@ -181,6 +182,18 @@ function GenerationPanel() {
             disabled={isGenerating}
           />
         </div>
+
+        <ParameterPresets
+          steps={parameters.steps}
+          guidance={parameters.guidance}
+          control={parameters.control}
+          onPresetSelect={(preset) => {
+            updateParameter('steps', preset.steps);
+            updateParameter('guidance', preset.guidance);
+            updateParameter('control', preset.control);
+          }}
+          disabled={isGenerating}
+        />
 
         <ParameterSliders
           steps={parameters.steps}
