@@ -11,6 +11,12 @@ from typing import Dict, List, Optional
 import boto3
 from botocore.exceptions import ClientError
 
+# Import retry with try/except for test environment compatibility
+try:
+    from utils.retry import retry_with_backoff
+except ImportError:
+    from src.utils.retry import retry_with_backoff
+
 
 class ImageStorage:
     """
@@ -73,17 +79,36 @@ class ImageStorage:
             'NSFW': False  # Will be updated by content filter if needed
         }
 
-        # Upload to S3
-        self.s3.put_object(
-            Bucket=self.bucket,
-            Key=key,
-            Body=json.dumps(metadata),
-            ContentType='application/json'
+        # Upload to S3 with retry logic
+        self._put_object_with_retry(
+            key=key,
+            body=json.dumps(metadata),
+            content_type='application/json'
         )
 
         print(f"Saved image to S3: {key}")
 
         return key
+
+    @retry_with_backoff(max_retries=3, base_delay=1.0, max_delay=4.0)
+    def _put_object_with_retry(self, key: str, body: str, content_type: str):
+        """
+        Upload object to S3 with retry logic.
+
+        Args:
+            key: S3 key
+            body: Object content
+            content_type: Content type
+
+        Raises:
+            Exception: If upload fails after retries
+        """
+        self.s3.put_object(
+            Bucket=self.bucket,
+            Key=key,
+            Body=body,
+            ContentType=content_type
+        )
 
     def get_image(self, image_key: str) -> Optional[Dict]:
         """
@@ -96,7 +121,7 @@ class ImageStorage:
             Image metadata dict or None if not found
         """
         try:
-            response = self.s3.get_object(Bucket=self.bucket, Key=image_key)
+            response = self._get_object_with_retry(image_key)
             metadata = json.loads(response['Body'].read().decode('utf-8'))
             return metadata
 
@@ -106,6 +131,22 @@ class ImageStorage:
                 return None
             else:
                 raise
+
+    @retry_with_backoff(max_retries=3, base_delay=1.0, max_delay=4.0)
+    def _get_object_with_retry(self, key: str):
+        """
+        Get object from S3 with retry logic.
+
+        Args:
+            key: S3 key
+
+        Returns:
+            S3 get_object response
+
+        Raises:
+            Exception: If get fails after retries
+        """
+        return self.s3.get_object(Bucket=self.bucket, Key=key)
 
     def list_galleries(self) -> List[str]:
         """
