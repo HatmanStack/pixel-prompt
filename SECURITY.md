@@ -138,7 +138,27 @@ We take security seriously. If you discover a security vulnerability, please fol
 
 ## Security Scanning
 
-### Backend (Python)
+### Automated CI Scanning
+
+Security scanning is automated in the CI/CD pipeline via GitHub Actions:
+
+- **Workflow**: `.github/workflows/security.yml`
+- **Triggers**: Every PR, push to main, and weekly on Mondays
+- **Scans**:
+  - `npm audit` for frontend dependencies (fails on high/critical vulnerabilities)
+  - `bandit` for Python security issues (fails on high/critical issues)
+  - Dependency review for PR dependency changes
+- **Reports**: Security scan reports uploaded as artifacts (retention: 30 days)
+- **Dependabot**: Automated dependency updates configured weekly
+
+To view security reports:
+1. Go to Actions tab → Security Scanning workflow
+2. Select latest run
+3. Download artifacts (npm-audit-report.json, bandit-report.json)
+
+### Manual Security Scanning
+
+#### Backend (Python)
 
 ```bash
 # Install bandit
@@ -151,7 +171,7 @@ bandit -r backend/src/ -f json -o security-report.json
 bandit -r backend/src/ -ll
 ```
 
-### Frontend (JavaScript)
+#### Frontend (JavaScript)
 
 ```bash
 # Audit dependencies
@@ -166,6 +186,27 @@ npm audit fix --force
 # Review audit report
 npm audit --json > audit-report.json
 ```
+
+### Handling Security Vulnerabilities
+
+When CI security scans fail:
+
+1. **Review the artifact report** to identify the vulnerability
+2. **Assess severity**: Critical/High must be fixed before merge
+3. **Update dependencies**:
+   - Frontend: `npm update [package]` or `npm audit fix`
+   - Backend: Update version in `requirements.txt`
+4. **Re-run tests** to ensure fixes don't break functionality
+5. **Document any exceptions** (false positives) in this file
+
+### Dependabot Configuration
+
+Dependabot automatically creates PRs for:
+- Frontend npm dependencies (weekly on Mondays)
+- Backend pip dependencies (weekly on Mondays)
+- GitHub Actions versions (weekly on Mondays)
+
+Configuration: `.github/dependabot.yml`
 
 ## Compliance & Standards
 
