@@ -21,6 +21,9 @@
     <a href="https://aws.amazon.com/lambda/">
     <img src="https://img.shields.io/badge/AWS%20Lambda-red" als="AWS Lambda">
     </a>
+    <a href="https://github.com/HatmanStack/pixel-prompt/actions/workflows/test.yml">
+    <img src="https://github.com/HatmanStack/pixel-prompt/actions/workflows/test.yml/badge.svg" alt="Tests">
+    </a>
   </h4>
 </div>
 
