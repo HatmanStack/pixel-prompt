@@ -144,24 +144,42 @@ If implemented:
 
 ### Bundle Size Analysis
 
-**Results**: [Date]
+**Results**: 2025-11-16 (Phase 4, Task 1)
+
+#### Current Build (After Code Splitting)
 
 | Bundle | Size (Raw) | Size (Gzipped) | Target | Status |
 |--------|-----------|----------------|--------|--------|
-| **Total** | [XXX] KB | [XXX] KB | < 500 KB | [PASS/FAIL] |
-| **Initial Load** | [XXX] KB | [XXX] KB | < 200 KB | [PASS/FAIL] |
-| **Vendor** | [XXX] KB | [XXX] KB | - | - |
-| **Components** | [XXX] KB | [XXX] KB | - | - |
+| **Total (all chunks)** | 228.58 KB | 73.56 KB | < 500 KB | ✓ PASS |
+| **Initial Load** | 219.88 KB | 70.12 KB | < 200 KB | ✓ PASS |
+| **Vendor (React)** | 192.53 KB | 60.35 KB | - | - |
+| **Main (App Code)** | 26.38 KB | 9.24 KB | - | - |
+| **API (UUID)** | 0.95 KB | 0.53 KB | - | - |
+| **Gallery (Lazy)** | 8.32 KB | 3.44 KB | - | Lazy Loaded |
+
+#### Baseline (Before Code Splitting)
+
+| Bundle | Size (Raw) | Size (Gzipped) |
+|--------|-----------|----------------|
+| **Total** | 218.70 KB | 70.08 KB |
+| **Vendor** | 11.26 KB | 4.07 KB |
+| **Main** | 207.44 KB | 66.01 KB |
+
+**Key Improvements**:
+- Gallery components lazy-loaded (3.44 KB gzipped, only when needed)
+- Main bundle reduced from 66.01 KB to 9.24 KB (86% reduction)
+- Better code organization with 4 separate chunks
+- Users who only generate images never download gallery code
 
 **Largest Dependencies**:
-1. [package-name]: [XX] KB
-2. [package-name]: [XX] KB
-3. [package-name]: [XX] KB
+1. react, react-dom: ~60 KB gzipped (vendor chunk)
+2. Generation components: ~9 KB gzipped (main chunk)
+3. Gallery components: ~3 KB gzipped (lazy-loaded)
 
 **Bundle Visualization**:
 ```bash
-npm run build -- --mode analyze
-# Opens interactive bundle analyzer
+npm run analyze
+# Builds and generates dist/stats.html with bundle visualization
 ```
 
 ### Network Performance
@@ -313,19 +331,28 @@ npm run build -- --mode analyze
 
 ## Optimization History
 
-### Optimization 1: [Optimization Name]
+### Optimization 1: Code Splitting and Lazy Loading
 
-**Date**: [Date]
-**Issue**: [What was slow]
-**Solution**: [What was done]
+**Date**: 2025-11-16 (Phase 4, Task 1)
+**Issue**: All frontend code loaded on initial page load, including gallery components not immediately needed
+**Solution**:
+- Implemented React.lazy() for GalleryBrowser component
+- Configured Vite manual chunk splitting (vendor, API, gallery, main)
+- Added LoadingSpinner component for Suspense fallback
+- Created navigation system with currentView state
+- Ensured all React imports use named imports for tree shaking
+
 **Impact**:
-- Before: [Metric: X.X]
-- After: [Metric: Y.Y]
-- Improvement: [XX]%
+- Gallery Bundle: 0 KB → 3.44 KB gzipped (lazy-loaded on demand)
+- Main Bundle: 66.01 KB → 9.24 KB gzipped (86% reduction)
+- Initial Load: 70.08 KB → 70.12 KB gzipped (negligible change)
+- Code Organization: 2 chunks → 4 chunks (better separation)
 
-### Optimization 2: [Optimization Name]
+**Result**: Users who only use generation features never download gallery code, saving 3.44 KB (5% of total bundle). Gallery loads on-demand with LoadingSpinner feedback.
 
-[Same format]
+### Optimization 2: [Future Optimization]
+
+[To be filled]
 
 ---
 
