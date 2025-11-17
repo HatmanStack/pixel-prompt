@@ -16,3 +16,6 @@
 [submodule "pixel-prompt-lambda"]
 	path = pixel-prompt-lambda
 	url = https://github.com/hatmanstack/pixel-prompt-lambda.git
+[submodule "pixel-prompt-complete"]
+	path = pixel-prompt-complete
+	url = https://github.com/hatmanstack/pixel-prompt-complete.git
