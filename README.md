@@ -24,9 +24,6 @@
     <a href="https://github.com/HatmanStack/pixel-prompt/actions/workflows/test.yml">
     <img src="https://github.com/HatmanStack/pixel-prompt/actions/workflows/test.yml/badge.svg" alt="Tests">
     </a>
-    <a href="https://github.com/HatmanStack/pixel-prompt/actions/workflows/security.yml">
-    <img src="https://github.com/HatmanStack/pixel-prompt/actions/workflows/security.yml/badge.svg" alt="Security">
-    </a>
     <a href="https://github.com/HatmanStack/pixel-prompt/actions/workflows/deploy-production.yml">
     <img src="https://github.com/HatmanStack/pixel-prompt/actions/workflows/deploy-production.yml/badge.svg" alt="Production">
     </a>
@@ -34,8 +31,35 @@
 </div>
 
   <p><b>Text-to-Image Variety Pack<br> <a href="https://production.d2iujulgl0aoba.amplifyapp.com/"> Pixel Prompt » </a> </b> </p>
- 
+
 </div>
+
+## Getting Started :rocket:
+
+**New to Pixel Prompt?** Start with the **[pixel-prompt-complete](./pixel-prompt-complete)** submodule for a full guided deployment to AWS.
+
+The `pixel-prompt-complete` submodule provides:
+- Complete frontend and backend implementation with all enhancements
+- Step-by-step deployment guide for AWS resources
+- Pre-configured CI/CD workflows
+- Production-ready infrastructure setup
+
+### Quick Start
+
+```bash
+# Clone with all submodules
+git clone --recurse-submodules https://github.com/HatmanStack/pixel-prompt.git
+
+# Or initialize the complete submodule
+git submodule update --init pixel-prompt-complete
+
+# Navigate to the complete implementation
+cd pixel-prompt-complete
+
+# Follow the deployment guide in that directory
+```
+
+This is the recommended starting point for deploying Pixel Prompt to AWS with all features and best practices included.
 
 ## Architecture and Deployment Options
 
@@ -196,21 +220,20 @@ For more detailed deployment documentation, see `PRODUCTION_CHECKLIST.md`.
 
 ## CI/CD Pipeline
 
-Pixel Prompt uses **GitHub Actions** for automated testing, security scanning, and deployment.
+Pixel Prompt uses **GitHub Actions** for automated testing and deployment.
 
 ### Automated Workflows
 
 | Workflow | Trigger | Purpose | Duration |
 |----------|---------|---------|----------|
-| **Tests** | PR, push to main | Run frontend & backend tests | ~5 min |
-| **Security** | PR, push, weekly | Vulnerability scanning | ~3 min |
+| **Tests** | PR, push to main | Run frontend & backend tests + linting | ~5 min |
 | **Deploy Staging** | Merge to main | Auto-deploy to staging | ~10 min |
 | **Deploy Production** | Manual or release | Deploy to production | ~15 min |
 
 ### CI/CD Flow
 
 ```
-Pull Request → Tests + Security → Review → Merge to Main
+Pull Request → Tests + Linting → Review → Merge to Main
                    ↓                           ↓
             All checks pass              Deploy Staging
                                               ↓
@@ -224,11 +247,10 @@ Pull Request → Tests + Security → Review → Merge to Main
 ### For Contributors
 
 When you create a pull request:
-1. **Automated tests** run on your code (frontend + backend)
-2. **Security scans** check for vulnerabilities
-3. **All checks must pass** before merge
-4. **At least 1 approval** required from maintainer
-5. After merge, **staging deployment** runs automatically
+1. **Automated tests and linting** run on your code (frontend + backend)
+2. **All checks must pass** before merge
+3. **At least 1 approval** required from maintainer
+4. After merge, **staging deployment** runs automatically
 
 See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for detailed contributor guidelines.
 
